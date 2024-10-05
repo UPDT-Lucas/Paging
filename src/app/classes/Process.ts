@@ -4,9 +4,9 @@ export class Process {
   id: number;
   pointers: Pointer[];
 
-  constructor(id: number, pointers: Pointer[]) {
+  constructor(id: number) {
     this.id = id;
-    this.pointers = pointers;
+    this.pointers = [];
   }
 
   getPointers(): Pointer[] {
@@ -21,8 +21,8 @@ export class Process {
     this.pointers.push(pointer);
   }
 
-  isPointerInProcess(pointer: Pointer): boolean {
-    return this.pointers.includes(pointer);
+  isPointerInProcess(id: number): boolean {
+    return this.pointers.some((pointer) => pointer.id === id);
   }
 
   removePointer(pointer: Pointer): void {
