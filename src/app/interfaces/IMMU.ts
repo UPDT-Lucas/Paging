@@ -12,9 +12,9 @@ export interface IMMU {
 
   getProcessByID(id: number): Process;
   getProcessByPointerId(id: number): Process;
-  createProcess(): void;
+  createProcess(pid: number): Process;
   createPointer(): Pointer;
-  cNewProcess(): void;
+  cNewProcess(pid: number, size: number): void;
   cKillProcess(): void;
   cDeleteProcess(): void;
 }

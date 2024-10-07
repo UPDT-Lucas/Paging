@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
+import { PaginationService } from './pagination.service';
 
 @Component({
   selector: 'app-root',
@@ -12,7 +13,7 @@ import { RouterOutlet } from '@angular/router';
 export class AppComponent {
   title = 'Paging';
 
-  constructor() {
-    console.log('AppComponent created');
+  constructor(service: PaginationService) {
+    service.getFifo();
   }
 }
