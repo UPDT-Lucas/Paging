@@ -51,10 +51,10 @@ export class Fifo implements IMMU {
     }
   }
 
-  createProcess(): void {
-    const newProcess: Process = new Process(this.pageConsecutive++);
+  createProcess(pid: number): Process {
+    const newProcess: Process = new Process(pid);
     this.processes.push(newProcess);
-    this.fifoQueue.push(newProcess);
+    return newProcess;
   }
 
   createPointer(): Pointer {
@@ -66,9 +66,31 @@ export class Fifo implements IMMU {
     return newPointer;
   }
 
-  cNewProcess(): void {}
+  cNewProcess(pid: number, size: number): void {
+    //bytesSize = size / 1000;
+    //const exactPages = Math.ceil(kb / this.pageSize);
+    var process: Process;
+    if (this.isExistingProces(pid)) {
+      process = this.getProcessByID(pid);
+    } else {
+      process = this.createProcess(pid);
+    }
+    const newPointer = this.createPointer();
+    process.addPointer(newPointer);
+  }
 
   cKillProcess(): void {}
 
   cDeleteProcess(): void {}
+
+  isExistingProces(pid: number): boolean {
+    return this.processes.some((process) => process.id === pid);
+  }
+
+  printProcesses(): void {
+    this.processes.forEach((process) => {
+      console.log(`Process ID: ${process.id}`);
+      process.printPointers();
+    });
+  }
 }

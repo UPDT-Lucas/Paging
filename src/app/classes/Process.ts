@@ -19,6 +19,7 @@ export class Process {
 
   addPointer(pointer: Pointer): void {
     this.pointers.push(pointer);
+    console.log('XD');
   }
 
   isPointerInProcess(id: number): boolean {
@@ -29,7 +30,7 @@ export class Process {
     this.pointers = this.pointers.filter((p) => p.id !== pointer.id);
   }
 
-  printPointer(): void {
+  printPointers(): void {
     this.pointers.forEach((pointer) => {
       console.log(`Pointer ${pointer.id}: ${pointer.fragmentation}`);
     });
