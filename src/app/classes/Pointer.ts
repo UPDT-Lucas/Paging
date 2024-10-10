@@ -1,8 +1,8 @@
 export class Pointer {
   id: number;
-  fragmentation: string;
+  fragmentation: number;
 
-  constructor(id: number, fragmentation: string) {
+  constructor(id: number, fragmentation: number) {
     this.id = id;
     this.fragmentation = fragmentation;
   }

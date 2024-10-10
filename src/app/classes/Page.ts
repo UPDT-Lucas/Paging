@@ -2,15 +2,16 @@ import { Pointer } from './Pointer';
 
 export class Page {
   id: number;
+  segmentDir:number|NULL;
   onRam: boolean;
   Bit: boolean;
-  pointers: Pointer[];
-
-  constructor(id: number, onRam: boolean, Bit: boolean, pointers: Pointer[]) {
+  memoryUse:number;
+  constructor(id: number, onRam: boolean, Bit: boolean,segmentDir:number,memoryUse:number){
     this.id = id;
     this.onRam = onRam;
     this.Bit = Bit;
-    this.pointers = pointers;
+    this.segmentDir = segmentDir;
+    this.memoryUse=memoryUse;
   }
 
   getId(): number {
@@ -32,8 +33,17 @@ export class Page {
   toggleBit(): void {
     this.Bit = !this.Bit;
   }
-
-  getPointers(): Pointer[] {
-    return this.pointers;
+ 
+  getmemoryUse():number{
+    return this.memoryUse;
+  }
+  setmemoryUse():number{
+    return this.memoryUse;
+  }
+  getSegmentDir(): number|NULL {
+    return this.segmentDir;
+  }
+  setSegmentDir(idSeg:number):void{
+    this.segmentDir=idSeg;
   }
 }
