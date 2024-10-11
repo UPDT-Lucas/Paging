@@ -23,7 +23,7 @@ export class Fifo implements IMMU {
   constructor() {
     this.RAM = 400;
     this.pageSize = 4;
-    this.availableAddresses = new Map<number,boolean>();    
+    this.availableAddresses = new Map<number,boolean>();
     this.currentMemUsage = 0;
     this.currenVirtualMemUsage=0;
     this.clock = 0;
@@ -37,7 +37,7 @@ export class Fifo implements IMMU {
     this.fifoVirtualPages=[];
     this.pointerPageMap = new Map<Pointer, Page[]>();
     for(let i=0;i<100;i++){
-      availableAddresses.set(i,true);
+      this.availableAddresses.set(i,true);
     }
   }
 
@@ -65,99 +65,29 @@ export class Fifo implements IMMU {
     return newProcess;
   }
 
-  createPointer(frag:number): Pointer {
+  createPointer(size: number): Pointer {
     this.pointerConsecutive++;
-    const newPointer: Pointer = new Pointer(this.pointerConsecutive, frag);
+    const newPointer: Pointer = new Pointer(this.pointerConsecutive, size);
+    if (!this.pointerPageMap.has(newPointer)) {
+      this.pointerPageMap.set(newPointer, []);
+    }
     return newPointer;
   }
 
   cNewProcess(pid: number, size: number): void {
-    //bytesSize = size / 1000;
-    //const exactPages = Math.ceil(kb / this.pageSize);
     var process: Process;
-
+    //pasar de B a KB para comparar con el tamaño de la página
+    const kb = size / 1000;
+    //calcular el número de páginas que se necesitan
+    const pages = Math.ceil(kb / this.pageSize);
     if (this.isExistingProces(pid)) {
       process = this.getProcessByID(pid);
-    } else if(deadProcesses.includes(pid)){
+    } else if(this.deadProcesses.includes(pid)){
       throw new Error('Process was killed before');
     }else{
       process = this.createProcess(pid);
     }
-
-    let newPointer:Pointer;
-    if(size>4096){
-      const pagesNeeded :number =  Math.ceil(size/4096);
-      let pagesCal :number=size/4096;
-      let pagesArr:Page[]=[];
-      for(let i = 0;i<pagesNeeded;i++){
-        if(this.currentMemUsage>==400){
-          this.fifoStaticPages.push(this.pageConsecutive);
-          this.clock +=5;
-          const exitID:number = this.fifoStaticPages.shift();
-          const segmentReuse:number = this.swapingPages(exitID);
-          const bytesDif:number;
-          if(pagesCal<1){
-            bytesDif = pagesCal*4096;
-
-          }else{
-            bytesDif = 4096;
-            pagesCal--;
-          }
-          const newPage:Page = new Page(this.pageConsecutive,true,true,segmentReuse,bytesDif);
-
-          this.pageConsecutive++;
-          pagesArr.push(newPage);
-
-        }else{
-          this.currentMemUsage+=4;
-          this.clock +=1;
-          this.fifoStaticPages.push(this.pageConsecutive);
-          const freeSegment:number = getNewSegment();
-          const bytesDif:number;
-          if(pagesCal<1){
-            bytesDif = pagesCal*4096;
-
-          }else{
-            bytesDif = 4096;
-            pagesCal--;
-          }
-          const newPage:Page = new Page(this.pageConsecutive,true,true,freeSegment,bytesDif);
-          this.pageConsecutive++;
-          pagesArr.push(newPage);
-        }
-      }
-      newPointer = this.createPointer(calculateFragmentation(pagesArr));
-      this.pointerPageMap.set(newPointer,pagesArr);
-      
-    }else{
-
-      let pagesArr:Page[]=[];
-
-      if(this.currentMemUsage>==400){
-          this.fifoStaticPages.push(this.pageConsecutive);
-          this.clock +=5;
-          const exitID:number = this.fifoStaticPages.shift();
-          const segmentReuse:number = this.swapingPages(exitID);
-          const bytesDif:number;
-          const newPage:Page = new Page(this.pageConsecutive,true,true,segmentReuse,size);
-
-          this.pageConsecutive++;
-          pagesArr.push(newPage);
-
-        }else{
-          this.currentMemUsage+=4;
-          this.clock +=1;
-          this.fifoStaticPages.push(this.pageConsecutive);
-          const freeSegment:number = getNewSegment();
-          const bytesDif:number;
-        
-          const newPage:Page = new Page(this.pageConsecutive,true,true,freeSegment,size);
-          this.pageConsecutive++;
-          pagesArr.push(newPage);
-        }
-
-
-    }
+    const newPointer = this.createPointer(size);
     process.addPointer(newPointer);
 
 
@@ -175,7 +105,7 @@ export class Fifo implements IMMU {
   for(const[key,value] of this.availableAddresses){
     if(value===false){
       this.availableAddresses.set(key,true);
-      return key; 
+      return key;
     }
   }
     throw new Error('There is not memory segmente available');
@@ -186,11 +116,11 @@ export class Fifo implements IMMU {
         if(value.getId()===pidExit){
           this.fifoVirtualPages.push(pidExit);
           this.currenVirtualMemUsage+=value.getmemoryUse()/1024;
-          const segmentReturn:number = value.getSegmentDir();
-          value.setSegmentDir(null);
+          const segmentReturn:number = value.getSegmentDir()!;
+          value.setSegmentDir(undefined);
           value.toggleRam();
           this.recalculateFragmentation(key);
-          return segmentReturn; 
+          return segmentReturn;
         }
       }
     }
@@ -198,7 +128,7 @@ export class Fifo implements IMMU {
 
  }
  calculateFragmentation(pages:Page[]):number{
-    const addFrag:number;
+    var addFrag: number = 0;
     pages.forEach((page)=>{
       addFrag+=4-page.getmemoryUse()/1024;
     });
@@ -206,17 +136,17 @@ export class Fifo implements IMMU {
 
  }
  recalculateFragmentation(value:Pointer):void{
-  const oldValues:Page[]=this.pointerPageMap.get(value);
-  const newFragmentation: number=0;
-  oldValues.forEach((object)=>{
-    if(object.isOnRam){
+  const oldValues:Page[] | undefined =this.pointerPageMap.get(value);
+  var newFragmentation: number=0;
+  oldValues!.forEach((object)=>{
+    if(object.isOnRam()){
       newFragmentation +=4-object.getmemoryUse()/1024;
     }
   });
 
   const newPointer:Pointer = new Pointer(value.getId(),newFragmentation);
   this.pointerPageMap.delete(value);
-  this,pointerPageMap.set(newPointer,oldValues);
+  this.pointerPageMap.set(newPointer, oldValues!);
  }
   printProcesses(): void {
     this.processes.forEach((process) => {

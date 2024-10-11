@@ -1,1 +1,17 @@
 /* You can add global styles to this file, and also import other style files */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Nunito", sans-serif;
+  font-weight: 500;
+  font-style: normal;
+  user-select: none;
+}
+
+img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
+}
