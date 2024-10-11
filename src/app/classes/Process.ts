@@ -13,6 +13,15 @@ export class Process {
     return this.pointers;
   }
 
+  getPointerById(id: number): Pointer {
+    const p = this.pointers.find((pointer) => pointer.id === id);
+    if (p) {
+      return p;
+    } else {
+      throw new Error('Pointer not found');
+    }
+  }
+
   getId(): number {
     return this.id;
   }

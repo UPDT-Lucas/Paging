@@ -15,6 +15,6 @@ export interface IMMU {
   createProcess(pid: number): Process;
   createPointer(size: number): Pointer;
   cNewProcess(pid: number, size: number): void;
-  cKillProcess(): void;
-  cDeleteProcess(): void;
+  cKillProcess(ptrId: number): void;
+  cDeleteProcess(pid: number): void;
 }

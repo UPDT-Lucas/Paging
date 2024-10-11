@@ -65,21 +65,15 @@ export class Fifo implements IMMU {
     return newProcess;
   }
 
-  createPointer(size: number): Pointer {
+  createPointer(frag:number): Pointer {
     this.pointerConsecutive++;
-    const newPointer: Pointer = new Pointer(this.pointerConsecutive, size);
-    if (!this.pointerPageMap.has(newPointer)) {
-      this.pointerPageMap.set(newPointer, []);
-    }
+    const newPointer: Pointer = new Pointer(this.pointerConsecutive, frag);
     return newPointer;
   }
 
   cNewProcess(pid: number, size: number): void {
     var process: Process;
-    //pasar de B a KB para comparar con el tamaño de la página
-    const kb = size / 1000;
-    //calcular el número de páginas que se necesitan
-    const pages = Math.ceil(kb / this.pageSize);
+
     if (this.isExistingProces(pid)) {
       process = this.getProcessByID(pid);
     } else if(this.deadProcesses.includes(pid)){
@@ -87,11 +81,78 @@ export class Fifo implements IMMU {
     }else{
       process = this.createProcess(pid);
     }
-    const newPointer = this.createPointer(size);
-    process.addPointer(newPointer);
+
+    let newPointer:Pointer;
+    if(size>4096){
+      const pagesNeeded :number =  Math.ceil(size/4096);
+      let pagesCal :number=size/4096;
+      let pagesArr:Page[]=[];
+      for(let i = 0;i<pagesNeeded;i++){
+        if(this.currentMemUsage>=400){
+          this.fifoStaticPages.push(this.pageConsecutive);
+          this.clock +=5;
+          const exitID:number | undefined = this.fifoStaticPages.shift();
+          const segmentReuse:number = this.swapingPages(exitID!);
+          var bytesDif:number;
+          if(pagesCal<1){
+            bytesDif = pagesCal*4096;
+
+          }else{
+            bytesDif = 4096;
+            pagesCal--;
+          }
+          const newPage:Page = new Page(this.pageConsecutive,true,true,segmentReuse,bytesDif);
+
+          this.pageConsecutive++;
+          pagesArr.push(newPage);
+
+        }else{
+          this.currentMemUsage+=4;
+          this.clock +=1;
+          this.fifoStaticPages.push(this.pageConsecutive);
+          const freeSegment:number = this.getNewSegment();
+          var bytesDif:number;
+          if(pagesCal<1){
+            bytesDif = pagesCal*4096;
+
+          }else{
+            bytesDif = 4096;
+            pagesCal--;
+          }
+          const newPage:Page = new Page(this.pageConsecutive,true,true,freeSegment,bytesDif);
+          this.pageConsecutive++;
+          pagesArr.push(newPage);
+        }
+      }
+      newPointer = this.createPointer(this.calculateFragmentation(pagesArr));
+      this.pointerPageMap.set(newPointer,pagesArr);
+
+    }else{
+
+      let pagesArr:Page[]=[];
+
+      if(this.currentMemUsage>=400){
+          this.fifoStaticPages.push(this.pageConsecutive);
+          this.clock +=5;
+          const exitID:number | undefined = this.fifoStaticPages.shift();
+          const segmentReuse:number = this.swapingPages(exitID!);
+          const newPage:Page = new Page(this.pageConsecutive,true,true,segmentReuse,size);
+          this.pageConsecutive++;
+          pagesArr.push(newPage);
+
+        }else{
+          this.currentMemUsage+=4;
+          this.clock +=1;
+          this.fifoStaticPages.push(this.pageConsecutive);
+          const freeSegment:number = this.getNewSegment();
+          const newPage:Page = new Page(this.pageConsecutive,true,true,freeSegment,size);
+          this.pageConsecutive++;
+          pagesArr.push(newPage);
+        }
 
 
-
+    }
+    //process.addPointer(newPointer);
   }
 
   cKillProcess(): void {}
@@ -128,7 +189,7 @@ export class Fifo implements IMMU {
 
  }
  calculateFragmentation(pages:Page[]):number{
-    var addFrag: number = 0;
+    var addFrag:number = 0;
     pages.forEach((page)=>{
       addFrag+=4-page.getmemoryUse()/1024;
     });
