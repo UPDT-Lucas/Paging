@@ -41,6 +41,10 @@ export class Fifo implements IMMU {
     }
   }
 
+  getClock(): number {
+    return this.clock;
+  }
+
   getProcessByID(id: number): Process {
     const p = this.processes.find((process) => process.id === id);
     if (p) {
@@ -194,8 +198,8 @@ export class Fifo implements IMMU {
       addFrag+=4-page.getmemoryUse()/1024;
     });
     return addFrag;
-
  }
+
  recalculateFragmentation(value:Pointer):void{
   const oldValues:Page[] | undefined =this.pointerPageMap.get(value);
   var newFragmentation: number=0;

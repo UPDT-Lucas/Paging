@@ -28,7 +28,6 @@ export class Process {
 
   addPointer(pointer: Pointer): void {
     this.pointers.push(pointer);
-    console.log('XD');
   }
 
   isPointerInProcess(id: number): boolean {

@@ -3,7 +3,7 @@ import { Page } from './Page';
 import { Process } from './Process';
 import { Pointer } from './Pointer';
 
-export class MRU implements IMMU {
+export class RND implements IMMU {
   RAM: number;
   pageSize: number;
   currentMemUsage: number;
@@ -14,8 +14,6 @@ export class MRU implements IMMU {
   pointerConsecutive: number;
   pointerPageMap: Map<Pointer, Page[]>;
   processes: Process[];
-  fifoQueue: Process[];
-  recentlyUsedPages: number[];
   loadedPages: Page[];
   availableAddresses: Map<number, boolean>;
   deadProcesses: number[];
@@ -31,26 +29,16 @@ export class MRU implements IMMU {
     this.pointerConsecutive = 0;
     this.trashing = 0;
     this.processes = [];
-    this.fifoQueue = [];
     this.deadProcesses = [];
-    this.recentlyUsedPages = [];
     this.loadedPages = [];
     this.pointerPageMap = new Map<Pointer, Page[]>();
-    for (let i = 0; i < this.RAM / this.pageSize; i++) {
+    for (let i = 0; i < 100; i++) {
       this.availableAddresses.set(i, true);
     }
   }
 
   getClock(): number {
     return this.clock;
-  }
-
-  getTrashing(): number {
-    return this.trashing;
-  }
-
-  getCurrentMemUsage(): number {
-    return this.currentMemUsage;
   }
 
   getProcessByID(id: number): Process {
@@ -82,6 +70,7 @@ export class MRU implements IMMU {
 
   createProcess(pid: number): Process {
     const newProcess: Process = new Process(pid);
+    this.processes.push(newProcess);
     return newProcess;
   }
 
@@ -96,8 +85,6 @@ export class MRU implements IMMU {
     const pagesArr: Page[] = this.allocatePages(size);
     const newPointer = this.mapPagesToPointer(pagesArr);
     this.pointerPageMap.set(newPointer, pagesArr);
-    process.addPointer(newPointer);
-    this.processes.push(process);
   }
 
   getOrCreateProcess(pid: number): Process {
@@ -106,66 +93,46 @@ export class MRU implements IMMU {
     } else if (this.deadProcesses.includes(pid)) {
       throw new Error('Process was killed before');
     } else {
-      console.log("entra con el pid: ", pid)
       return this.createProcess(pid);
     }
   }
 
   allocatePages(size: number): Page[] {
     const pagesNeeded: number = Math.ceil(size / 4096);
-    let remainingSpace: number = size;
-    let last: number = 0;
-    let pageSpace: number = 0;
-    if(pagesNeeded > 1){
-      last = this.loadedPages.length;
-    }
-    console.log(this.currentMemUsage)
-    const toIgnoreIndexes = this.recentlyUsedPages.slice(0, last)
     let pagesArr: Page[] = [];
     for (let i = 0; i < pagesNeeded; i++) {
       if (this.currentMemUsage >= this.RAM) {
-        if(remainingSpace > 4096){
-          pageSpace = 4096;
-        }else{
-          pageSpace = remainingSpace;
-        }
-        pagesArr.push(this.swapAndCreatePage(pageSpace, toIgnoreIndexes));
+        pagesArr.push(this.swapAndCreatePage());
       } else {
         pagesArr.push(this.createNewPage(size));
       }
-      if(remainingSpace < 4096){
-        this.trashing += remainingSpace;
-      }
-      remainingSpace -= 4096;
     }
     return pagesArr;
   }
 
-  swapAndCreatePage(size: number, toIgnoreIndexes: number []): Page {
+  swapAndCreatePage(): Page {
+    console.log("Before swap:", this.loadedPages.map(page => page.getId()));
+    this.currentMemUsage += this.pageSize;
     this.clock += 5;
-    const segmentReuse: number = this.swapingPages(toIgnoreIndexes);
-    const newPage: Page = new Page(this.pageConsecutive++, true, true, segmentReuse, size);
-    this.updateRecentlyUsed(newPage.getId());
-    this.loadedPages.push(newPage);
+    const segmentReuse: number = this.swapingPages();
+    const newPage: Page = this.createNewPage(4096);
+    const removedPage = this.loadedPages.find(page => page.getSegmentDir() === segmentReuse);
+    if (removedPage) {
+        this.loadedPages = this.loadedPages.filter(page => page !== removedPage);
+    }
+    console.log("Removed page:", removedPage?.getId());
+    console.log("New page:", newPage.getId());
+    console.log("After swap:", this.loadedPages.map(page => page.getId()));
     return newPage;
   }
 
   createNewPage(size: number): Page {
-    this.currentMemUsage += 4;
+    this.currentMemUsage += this.pageSize;
     this.clock += 1;
     const freeSegment: number = this.getNewSegment();
     const newPage: Page = new Page(this.pageConsecutive++, true, true, freeSegment, size);
-    this.updateRecentlyUsed(newPage.getId());
     this.loadedPages.push(newPage);
     return newPage;
-  }
-
-  updateRecentlyUsed(pageId: number): void {
-    const index = this.recentlyUsedPages.indexOf(pageId);
-    if (index !== -1) {
-      this.recentlyUsedPages.splice(index, 1);
-    }
-    this.recentlyUsedPages.push(pageId);
   }
 
   mapPagesToPointer(pagesArr: Page[]): Pointer {
@@ -174,53 +141,48 @@ export class MRU implements IMMU {
     return newPointer;
   }
 
-  cUsePointer(pointerId: number): void {
+  cUsePointer(pointerId: number): void{
     const pointer = this.getPointerById(pointerId);
     const pages = this.pointerPageMap.get(pointer!);
     if (!pages) {
       throw new Error('Pointer not found in the map');
     }
-    let mruPages: Page[] = [];
+    let randomPages: Page[] = [];
 
     const pagesOnRam: Page[] = pages.filter((page) => page.isOnRam());
     pagesOnRam.forEach((page) => {
       const pageLoadedIndex = this.loadedPages.findIndex((loadedPage) => loadedPage.getId() === page.getId());
       this.loadedPages.splice(pageLoadedIndex, 1);
-      mruPages.push(page);
+      randomPages.push(page);
     })
 
     const pagesNotOnRam: Page[] = pages.filter((page) => !page.isOnRam());
     pagesNotOnRam.forEach((page) => {
-      let frame = this.getNewSegment();
-      if (frame == -1) {
-        frame = this.replacePageUse(pagesOnRam);
+     const frame = this.getNewSegment();
+      if (frame == -1) { // there is no space in the memory
+        this.replacePageUse(pagesOnRam);
         page.setSegmentDir(frame);
-      } else {
+      }else{
         page.setSegmentDir(frame);
         this.currentMemUsage += page.getmemoryUse() / 1024;
       }
       page.toggleRam();
-      pagesOnRam.push(page);
-      mruPages.push(page);
-      this.recentlyUsedPages.pop();
-      this.recentlyUsedPages.push(page.getId());
+      randomPages.push(page);
     });
-    this.loadedPages.push(...mruPages);
-    this.clock += pagesNotOnRam.length * 1;
-    this.clock += pagesOnRam.length * 5;
+    this.clock += pagesNotOnRam.length * 5;
+    this.loadedPages.unshift(...randomPages);
   }
 
-  replacePageUse(pages: Page[]): number {
-    const loadedReverse = this.loadedPages.reverse();
-    const pageToRemove = loadedReverse.find((page) => !pages.includes(page));
-    if (pageToRemove) {
-      this.loadedPages = this.loadedPages.filter((page) => page !== pageToRemove);
-      pageToRemove.toggleRam();
+  replacePageUse(pages: Page[]): number | undefined{
+    if(this.loadedPages.length == 0){
+      return undefined;
     }
-    this.loadedPages.reverse();
-    return pageToRemove!.getSegmentDir()!;
+    const randomIndex = Math.floor(Math.random() * this.loadedPages.length);
+    const pageToReplace = this.loadedPages[randomIndex];
+    pageToReplace.toggleRam();
+    this.loadedPages.splice(randomIndex, 1);
+    return pageToReplace.getSegmentDir()!;
   }
-
 
   cKillProcess(pid: number): void {
     const process = this.getProcessByID(pid);
@@ -228,7 +190,7 @@ export class MRU implements IMMU {
     pointers.forEach((pointer) => {
       this.cDeleteProcess(pointer.getId());
     })
-    this.processes = this.processes.filter((process) => process.id !== pid);
+    this.processes.filter((process) => process.id !== pid);
   }
 
   cDeleteProcess(ptrId: number): void {
@@ -244,23 +206,17 @@ export class MRU implements IMMU {
       this.freePage(page);
     });
     const process = this.getProcessByPointerId(ptrId);
-    const ptr = this.getPointerById(ptrId)!
-    process.removePointer(ptr);
+    process.removePointer(this.getPointerById(ptrId)!);
     this.pointerPageMap.delete(pointer);
   }
 
   freePage(page: Page): void {
-    console.log(this.recentlyUsedPages)
-    console.log(page)
-    if (this.recentlyUsedPages.includes(page.getId())) {
-      console.log(this.currentMemUsage)
+    if (this.loadedPages.includes(page)) {
       this.currentMemUsage -= page.getmemoryUse() / 1024;
-      console.log(this.currentMemUsage)
-      const pageLoadedIndex = this.recentlyUsedPages.find((loadedPage) => loadedPage === page.getId());
-      this.recentlyUsedPages = this.recentlyUsedPages.filter((page) => page !== pageLoadedIndex);
+      const pageLoadedIndex = this.loadedPages.findIndex((loadedPage) => loadedPage.getId() === page.getId());
+      this.loadedPages.splice(pageLoadedIndex, 1);
       this.availableAddresses.set(page.getSegmentDir()!, true);
     }
-    console.log(this.availableAddresses)
   }
 
   isExistingProces(pid: number): boolean {
@@ -277,25 +233,17 @@ export class MRU implements IMMU {
     return -1;
   }
 
-  //tengo que hacer que me ignore si es una pagina del mismo puntero
-  //porque si no va intentar buscar una pagina que no existe todavia
-  swapingPages(toIgnore: number[]): number {
-    let toRemove: number | undefined;
-    if(toIgnore.length === 0){
-      toRemove = this.recentlyUsedPages.pop();
-    }else{
-      toRemove = toIgnore.pop()
-      this.recentlyUsedPages = this.recentlyUsedPages.filter((page) => page !== toRemove);
-    }
+  swapingPages(): number {
+    const pageIndex: number = Math.floor(Math.random() * this.loadedPages.length);
+    const pageToSwap: Page = this.loadedPages[pageIndex];
     for (const [key, values] of this.pointerPageMap) {
       for (const value of values) {
-        if (value.getId() === toRemove) {
+        if (value.getId() === pageToSwap.getId()) {
           this.currenVirtualMemUsage += value.getmemoryUse() / 1024;
           const segmentReturn: number = value.getSegmentDir()!;
           value.setSegmentDir(undefined);
           value.toggleRam();
           this.recalculateFragmentation(key);
-          this.loadedPages = this.loadedPages.filter((page) => page.getId() !== value.getId());
           return segmentReturn;
         }
       }
@@ -316,17 +264,14 @@ export class MRU implements IMMU {
   }
 
   private calculatePageFragmentation(pages: Page[]): number {
-    let fragmentation: number = 0;
-    pages.forEach((page) => {
-      if(page.getmemoryUse() != 4096){
-        fragmentation += page.getmemoryUse();
-      }
-    });
-    return fragmentation;
+    return pages.reduce((total, page) => total + (4 - page.getmemoryUse() / 1024), 0);
   }
 
   printProcesses(): void {
-    console.log(this.processes)
+    this.processes.forEach((process) => {
+      console.log(`Process ID: ${process.id}`);
+      process.printPointers();
+    });
   }
 
   printProcessPages(): void {
@@ -339,17 +284,6 @@ export class MRU implements IMMU {
   }
 
   printRecentlyUsed(): void {
-    console.log(this.recentlyUsedPages);
     console.log(this.loadedPages);
-  }
-
-  printPagesOnRam(): void {
-    for (const [key, values] of this.pointerPageMap) {
-      for (const value of values) {
-        if (value.isOnRam()) {
-          console.log(value)
-        }
-      }
-    }
   }
 }
