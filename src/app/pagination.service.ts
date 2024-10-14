@@ -16,25 +16,28 @@ export class PaginationService {
     }
     const proc0 = RNDP.cNewProcess(6, 10000);
     RNDP.printPagesOnRam();
-    RNDP.cUsePointer(3);
-    RNDP.cUsePointer(4);
+    RNDP.cUsePointer(1);
+    const proc1 = RNDP.cNewProcess(7, 4096);
     RNDP.printPagesOnRam();
-    RNDP.printProcessPages();
-    RNDP.cUsePointer(7);
-    RNDP.printPagesOnRam();
-    RNDP.cDeleteProcess(1);
-    RNDP.cDeleteProcess(2);
-    RNDP.printProcesses();
-    RNDP.cKillProcess(2);
-    RNDP.printProcesses();
-    RNDP.cNewProcess(7, 4096);
-    RNDP.cNewProcess(8, 10000);
-    console.log("en ram")
-    RNDP.printPagesOnRam();
-    console.log("en ram")
-    RNDP.printProcesses();
-    console.log(RNDP.getClock());
-    console.log(RNDP.getTrashing());
-    console.log(RNDP.getCurrentMemUsage());
+    //RNDP.printProcessPages();
+    // RNDP.cUsePointer(4);
+    // RNDP.printPagesOnRam();
+    // RNDP.printProcessPages();
+    // RNDP.cUsePointer(7);
+    // RNDP.printPagesOnRam();
+    // RNDP.cDeleteProcess(1);
+    // RNDP.cDeleteProcess(2);
+    // RNDP.printProcesses();
+    // RNDP.cKillProcess(2);
+    // RNDP.printProcesses();
+    // RNDP.cNewProcess(7, 4096);
+    // RNDP.cNewProcess(8, 10000);
+    // console.log("en ram")
+    // RNDP.printPagesOnRam();
+    // console.log("en ram")
+    // RNDP.printProcesses();
+    // console.log(RNDP.getClock());
+    // console.log(RNDP.getTrashing());
+    // console.log(RNDP.getCurrentMemUsage());
   }
 }

@@ -106,7 +106,6 @@ export class MRU implements IMMU {
     } else if (this.deadProcesses.includes(pid)) {
       throw new Error('Process was killed before');
     } else {
-      console.log("entra con el pid: ", pid)
       return this.createProcess(pid);
     }
   }
@@ -187,6 +186,10 @@ export class MRU implements IMMU {
       const pageLoadedIndex = this.loadedPages.findIndex((loadedPage) => loadedPage.getId() === page.getId());
       this.loadedPages.splice(pageLoadedIndex, 1);
       mruPages.push(page);
+      //! Cambié esto para que cuando hago un use de algo en RAM igual me
+      //! lo ponga en la lista de recientemente usados para el reemplazo
+      this.recentlyUsedPages = this.recentlyUsedPages.filter((page) => page !== pageLoadedIndex);
+      this.recentlyUsedPages.push(page.getId());
     })
 
     const pagesNotOnRam: Page[] = pages.filter((page) => !page.isOnRam());
@@ -250,17 +253,12 @@ export class MRU implements IMMU {
   }
 
   freePage(page: Page): void {
-    console.log(this.recentlyUsedPages)
-    console.log(page)
     if (this.recentlyUsedPages.includes(page.getId())) {
-      console.log(this.currentMemUsage)
       this.currentMemUsage -= page.getmemoryUse() / 1024;
-      console.log(this.currentMemUsage)
       const pageLoadedIndex = this.recentlyUsedPages.find((loadedPage) => loadedPage === page.getId());
       this.recentlyUsedPages = this.recentlyUsedPages.filter((page) => page !== pageLoadedIndex);
       this.availableAddresses.set(page.getSegmentDir()!, true);
     }
-    console.log(this.availableAddresses)
   }
 
   isExistingProces(pid: number): boolean {
@@ -287,6 +285,8 @@ export class MRU implements IMMU {
       toRemove = toIgnore.pop()
       this.recentlyUsedPages = this.recentlyUsedPages.filter((page) => page !== toRemove);
     }
+    console.log(this.recentlyUsedPages)
+    console.log("removing", toRemove)
     for (const [key, values] of this.pointerPageMap) {
       for (const value of values) {
         if (value.getId() === toRemove) {
