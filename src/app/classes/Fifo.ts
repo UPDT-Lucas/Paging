@@ -23,7 +23,9 @@ export class Fifo implements IMMU {
   constructor() {
     this.RAM = 400;
     this.pageSize = 4;
+
     this.availableAddresses = new Map<number|null|undefined,boolean>();    
+
     this.currentMemUsage = 0;
     this.currenVirtualMemUsage=0;
     this.clock = 0;
@@ -39,6 +41,10 @@ export class Fifo implements IMMU {
     for(let i=0;i<100;i++){
       this.availableAddresses.set(i,true);
     }
+  }
+
+  getClock(): number {
+    return this.clock;
   }
 
   getProcessByID(id: number): Process {
@@ -72,8 +78,6 @@ export class Fifo implements IMMU {
   }
 
   cNewProcess(pid: number, size: number): void {
-    //bytesSize = size / 1000;
-    //const exactPages = Math.ceil(kb / this.pageSize);
     var process: Process;
 
     if (this.isExistingProces(pid)) {
@@ -92,6 +96,7 @@ export class Fifo implements IMMU {
       let pagesCal :number=size/4096;
       let pagesArr:Page[]=[];
       for(let i = 0;i<pagesNeeded;i++){
+
         
         if(this.currentMemUsage>=400){
           this.fifoStaticPages.push(this.pageConsecutive);
@@ -100,6 +105,7 @@ export class Fifo implements IMMU {
           const exitID:number | undefined = this.fifoStaticPages.shift();
           const segmentReuse:number|null|undefined = this.swapingPages(exitID);
           let bytesDif:number=0;
+
           if(pagesCal<1){
             bytesDif = pagesCal*4096;
 
@@ -117,8 +123,10 @@ export class Fifo implements IMMU {
           this.currentMemUsage+=4;
           this.clock +=1;
           this.fifoStaticPages.push(this.pageConsecutive);
+
           const freeSegment:number|null|undefined = this.getNewSegment();
           let bytesDif:number=0;
+
           if(pagesCal<1){
             bytesDif = pagesCal*4096;
 
@@ -132,10 +140,11 @@ export class Fifo implements IMMU {
         }
        
       }
-      
+
+
       newPointer = this.createPointer(this.calculateFragmentation(pagesArr));
       this.pointerPageMap.set(newPointer,pagesArr);
-      
+
     }else{
 
       let pagesArr:Page[]=[];
@@ -147,8 +156,8 @@ export class Fifo implements IMMU {
           const exitID:number|undefined = this.fifoStaticPages.shift();
           const segmentReuse:number|null|undefined = this.swapingPages(exitID);
           
-          const newPage:Page = new Page(this.pageConsecutive,true,true,segmentReuse,size);
 
+          const newPage:Page = new Page(this.pageConsecutive,true,true,segmentReuse,size);
           this.pageConsecutive++;
           pagesArr.push(newPage);
 
@@ -156,9 +165,11 @@ export class Fifo implements IMMU {
           this.currentMemUsage+=4;
           this.clock +=1;
           this.fifoStaticPages.push(this.pageConsecutive);
+
           const freeSegment:number|null|undefined = this.getNewSegment();
           
         
+
           const newPage:Page = new Page(this.pageConsecutive,true,true,freeSegment,size);
           this.pageConsecutive++;
           pagesArr.push(newPage);
@@ -168,9 +179,9 @@ export class Fifo implements IMMU {
 
 
     }
+
     process.addPointer(newPointer);
     //this.printProcesses();
-
 
 
   }
@@ -285,9 +296,11 @@ export class Fifo implements IMMU {
   }
  getNewSegment():number|null|undefined{
   for(const[key,value] of this.availableAddresses){
+
     if(value===true){
       this.availableAddresses.set(key,false);
       return key; 
+
     }
   }
     throw new Error('There is not memory segmente available');
@@ -299,12 +312,13 @@ export class Fifo implements IMMU {
           
           //this.fifoVirtualPages.push(pidExit);
           this.currenVirtualMemUsage+=value.getmemoryUse()/1024;
+
           const segmentReturn:number|null|undefined= value.getSegmentDir();
           value.setSegmentDir(null);
           value.toggleRam();
           console.log("Estado después de la modificación:", value);
           this.recalculateFragmentation(key);
-          return segmentReturn; 
+          return segmentReturn;
         }
       }
     }
@@ -312,12 +326,12 @@ export class Fifo implements IMMU {
 
  }
  calculateFragmentation(pages:Page[]):number{
+
     let addFrag:number=0;
     pages.forEach((page)=>{
       addFrag+=4-page.getmemoryUse()/1024;
     });
     return addFrag;
-
  }
 
 
@@ -344,6 +358,7 @@ export class Fifo implements IMMU {
     this.pointerPageMap.delete(value);
     
   }
+
  }
   totalFrag():number{
     let totalFrag:number=0;

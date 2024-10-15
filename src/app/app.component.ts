@@ -12,8 +12,4 @@ import { PaginationService } from './pagination.service';
 })
 export class AppComponent {
   title = 'Paging';
-
-  constructor(service: PaginationService) {
-    service.getFifo();
-  }
 }

@@ -1,0 +1,158 @@
+<div class="container">
+  <div class="main-content">
+    <div class="options">
+      <img src="../../assets/icons8-start-60.png" alt=""
+      (click)="startTimer()">
+      <div class="clock-container">
+        <p>
+          {{time}}
+        </p>
+        <img src="../../assets/icons8-clock-50.png" alt="">
+      </div>
+    </div>
+
+    <h1> RAM (FIFO)</h1>
+    <div class="grid-container">
+      @for (item of items; track $index) {
+        <div class="grid-item" [style.backgroundColor]="item"></div>
+      }
+    </div>
+    <h1> RAM (OPT)</h1>
+    <div class="grid-container">
+      @for (item of items; track $index) {
+        <div class="grid-item"></div>
+      }
+    </div>
+
+    <div class="process-lists">
+      <div class="process-list">
+        <div class="headers">
+          <p>Page ID</p>
+          <p>PID</p>
+          <p>Loaded</p>
+        </div>
+        <div class="each" style="background-color: rgb(255, 215, 140);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <div class="each" style="background-color: rgb(163, 255, 237);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <div class="each" style="background-color: rgb(255, 215, 140);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <div class="each" style="background-color: rgb(163, 255, 237);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <div class="each" style="background-color: rgb(255, 215, 140);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <div class="each" style="background-color: rgb(163, 255, 237);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <div class="each" style="background-color: rgb(255, 215, 140);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <div class="each" style="background-color: rgb(163, 255, 237);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <hr class="separator">
+        <div class="stat-list">
+          <div class="headers">
+            <p>Element</p>
+            <p>Quantity</p>
+            <p>%</p>
+          </div>
+          <div class="each">
+            <p>RAM</p>
+            <p>100</p>
+            <p>100</p>
+          </div>
+          <div class="each">
+            <p>VRAM</p>
+            <p>100</p>
+            <p>100</p>
+          </div>
+          <div class="each">
+            <p>Trashing</p>
+            <p>10</p>
+            <p>50</p>
+          </div>
+          <div class="each">
+            <p>Fragmentation</p>
+            <p>10</p>
+            <p>NA</p>
+          </div>
+        </div>
+      </div>
+      <div class="process-list">
+        <div class="headers">
+          <p>Page ID</p>
+          <p>PID</p>
+          <p>Loaded</p>
+        </div>
+        <div class="each" style="background-color: rgb(255, 215, 140);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <div class="each" style="background-color: rgb(163, 255, 237);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <div class="each" style="background-color: rgb(255, 215, 140);">
+          <p>1</p>
+          <p>1</p>
+          <p>Yes</p>
+        </div>
+        <hr class="separator">
+        <div class="stat-list">
+          <div class="headers">
+            <p>Element</p>
+            <p>Quantity</p>
+            <p>%</p>
+          </div>
+          <div class="each">
+            <p>RAM</p>
+            <p>100</p>
+            <p>100</p>
+          </div>
+          <div class="each">
+            <p>VRAM</p>
+            <p>100</p>
+            <p>100</p>
+          </div>
+          <div class="each">
+            <p>Trashing</p>
+            <p>10</p>
+            <p>50</p>
+          </div>
+          <div class="each">
+            <p>Fragmentation</p>
+            <p>10</p>
+            <p>NA</p>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+</div>
+

@@ -2,6 +2,7 @@ import { Pointer } from './Pointer';
 
 export class Page {
   id: number;
+
   segmentDir:number|undefined|null;
   onRam: boolean;
   Bit: boolean;
@@ -33,17 +34,19 @@ export class Page {
   toggleBit(): void {
     this.Bit = !this.Bit;
   }
- 
+
   getmemoryUse():number{
     return this.memoryUse;
   }
   setmemoryUse():number{
     return this.memoryUse;
   }
+
   getSegmentDir(): number|undefined|null {
     return this.segmentDir;
   }
   setSegmentDir(idSeg:number|undefined|null):void{
+
     this.segmentDir=idSeg;
   }
 }

@@ -1,0 +1,106 @@
+.container {
+  display: flex;
+  background-color: black;
+  justify-content: center;
+  min-height: 100vh; /* Asegura que el contenedor ocupe al menos la altura de la ventana */
+  max-width: 100%; /* Asegura que no se desborde horizontalmente */
+  overflow: auto; /* Permite el desplazamiento si el contenido es más grande que la ventana */
+}
+
+
+.main-content {
+  margin: 24px;
+  padding: 24px;
+  background-color: white;
+  border-radius: 20px;
+  max-width: 75%; /* Asegura que no se desborde horizontalmente */
+}
+
+.options {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.clock-container{
+  display: flex;
+  p {
+    align-self: flex-end;
+    margin-right: 8px;
+  }
+}
+
+/* Contenedor para la fila de cuadros */
+.grid-container {
+  display: flex;
+  flex-wrap: wrap; /* Permite que los cuadros se ajusten y envuelvan */
+  margin: 20px 0;
+}
+
+/* Estilos para los cuadros */
+.grid-item {
+  width: 15px;
+  height: 15px;
+  background-color: white;
+  border: 1px solid #000;
+  cursor: pointer;
+}
+
+.process-lists {
+  display: flex;
+  justify-content: space-between; /* Distribuye las dos listas horizontalmente */
+  margin-top: 20px;
+}
+
+/* Estilo para cada lista de procesos */
+.process-list {
+  width: 48%; /* Ajusta el ancho de cada lista */
+  border: 2px solid #333; /* Bordes alrededor de cada lista */
+  padding: 10px; /* Espacio interno para que no se vea amontonado */
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* Sombra para darle un efecto más elegante */
+  border-radius: 8px; /* Bordes redondeados para un mejor estilo */
+}
+
+.stat-list{
+  margin-top: 24px;
+}
+
+.headers, .each {
+  display: flex;
+  justify-content: space-between; /* Alinea los elementos dentro de la lista */
+}
+
+.headers p, .each p {
+  width: 30%; /* Ajusta el ancho de cada columna */
+}
+
+.headers p {
+  font-weight: bold;
+}
+
+h1 {
+  font-size: 20px;
+}
+
+.separator {
+  margin: 10px;
+  border-bottom: 1px solid #333;
+}
+
+/* Media Query para pantallas menores a 800px */
+@media (max-width: 800px) {
+  .process-lists {
+    flex-direction: column; /* Cambia la dirección a columnas */
+    align-items: center; /* Centra las listas en la columna */
+  }
+
+  .process-list {
+    width: 90%; /* Ajusta el ancho a 90% en pantallas pequeñas */
+    margin-bottom: 20px; /* Agrega margen entre las listas */
+  }
+
+  .main-content {
+    width: 100%; /* Asegúrate de que el contenido principal ocupe el 100% del ancho */
+  }
+}
