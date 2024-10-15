@@ -2,11 +2,12 @@ import { Pointer } from './Pointer';
 
 export class Page {
   id: number;
-  segmentDir:number | undefined;
+
+  segmentDir:number|undefined|null;
   onRam: boolean;
   Bit: boolean;
   memoryUse:number;
-  constructor(id: number, onRam: boolean, Bit: boolean,segmentDir:number,memoryUse:number){
+  constructor(id: number, onRam: boolean, Bit: boolean,segmentDir:number|undefined|null,memoryUse:number){
     this.id = id;
     this.onRam = onRam;
     this.Bit = Bit;
@@ -40,10 +41,12 @@ export class Page {
   setmemoryUse():number{
     return this.memoryUse;
   }
-  getSegmentDir(): number | undefined {
+
+  getSegmentDir(): number|undefined|null {
     return this.segmentDir;
   }
-  setSegmentDir(idSeg:number | undefined):void{
+  setSegmentDir(idSeg:number|undefined|null):void{
+
     this.segmentDir=idSeg;
   }
 }

@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { Fifo } from './classes/Fifo';
 import { MRU } from './classes/MRU';
 import { RND } from './classes/RND';
+import { SecondChance } from './classes/SecondChance';
+
 
 @Injectable({
   providedIn: 'root',
@@ -39,5 +41,6 @@ export class PaginationService {
     // console.log(RNDP.getClock());
     // console.log(RNDP.getTrashing());
     // console.log(RNDP.getCurrentMemUsage());
+
   }
 }
