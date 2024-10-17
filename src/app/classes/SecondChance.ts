@@ -23,7 +23,7 @@ export class SecondChance implements IMMU {
   constructor() {
     this.RAM = 400;
     this.pageSize = 4;
-    this.availableAddresses = new Map<number|null|undefined,boolean>();    
+    this.availableAddresses = new Map<number|null|undefined,boolean>();
     this.currentMemUsage = 0;
     this.currenVirtualMemUsage=0;
     this.clock = 0;
@@ -88,13 +88,13 @@ export class SecondChance implements IMMU {
     if(size>4096){
 
       const pagesNeeded :number =  Math.ceil(size/4096);
-      
+
       let pagesCal :number=size/4096;
       let pagesArr:Page[]=[];
       for(let i = 0;i<pagesNeeded;i++){
-        
+
         if(this.currentMemUsage>=400){
-          
+
           this.clock +=5;
           this.trashing+=5;
           const exitID:number | undefined = this.getIdSecondChance(null);
@@ -117,7 +117,7 @@ export class SecondChance implements IMMU {
         }else{
           this.currentMemUsage+=4;
           this.clock +=1;
-          
+
           const freeSegment:number|null|undefined = this.getNewSegment();
           let bytesDif:number=0;
           if(pagesCal<1){
@@ -132,23 +132,23 @@ export class SecondChance implements IMMU {
           this.fifoStaticPages.push(newPage);
           pagesArr.push(newPage);
         }
-       
+
       }
-      
+
       newPointer = this.createPointer(this.calculateFragmentation(pagesArr));
       this.pointerPageMap.set(newPointer,pagesArr);
-      
+
     }else{
 
       let pagesArr:Page[]=[];
 
       if(this.currentMemUsage>=400){
-          
+
           this.clock +=5;
           this.trashing+=5;
           const exitID:number|undefined = this.getIdSecondChance(null);
           const segmentReuse:number|null|undefined = this.swapingPages(exitID);
-          
+
           const newPage:Page = new Page(this.pageConsecutive,true,false,segmentReuse,size);
 
           this.pageConsecutive++;
@@ -158,10 +158,10 @@ export class SecondChance implements IMMU {
         }else{
           this.currentMemUsage+=4;
           this.clock +=1;
-          
+
           const freeSegment:number|null|undefined = this.getNewSegment();
-          
-        
+
+
           const newPage:Page = new Page(this.pageConsecutive,true,false,freeSegment,size);
           this.pageConsecutive++;
           this.fifoStaticPages.push(newPage);
@@ -174,10 +174,8 @@ export class SecondChance implements IMMU {
     }
     process.addPointer(newPointer);
     //this.printProcesses();
-
-
-
   }
+
   getIdSecondChance(pages:Page[]|null):number|undefined{
     let index:number =0;
     if(pages!==null){
@@ -193,10 +191,10 @@ export class SecondChance implements IMMU {
             return page.getId();
          }else{
             page.toggleBit();
-         } 
+         }
         }
-         index++; 
-        
+         index++;
+
       }
       throw new Error('There is not an id for the SecondChance process');
     }else{
@@ -206,13 +204,13 @@ export class SecondChance implements IMMU {
             return page.getId();
          }else{
             page.toggleBit();
-         } 
-         index++; 
+         }
+         index++;
       }
       throw new Error('There is not an id for the SecondChance process');
     }
-    
-    
+
+
   }
 
   cKillProcess(pid:number): void {
@@ -227,7 +225,7 @@ export class SecondChance implements IMMU {
           this.processes.splice(procInd, 1);
       }
      }
-   
+
   }
   getClock():number{
     return this.clock;
@@ -249,7 +247,7 @@ export class SecondChance implements IMMU {
         //const  index = this.fifoVirtualPages.indexOf(page.getId());
         //this.fifoVirtualPages.splice(index,1);
       }
-      
+
     }
     this.DeletePointerbyPointerId(pi);
   }
@@ -262,7 +260,7 @@ export class SecondChance implements IMMU {
         if(page.getBit()===false){
           page.toggleBit();
         }
-        
+
       }else{
         this.clock+=5;
         this.trashing+=5;
@@ -288,7 +286,7 @@ export class SecondChance implements IMMU {
       }
     }
 
-  }   
+  }
 
   DeletePointerbyPointerId(pi:number):boolean{
     for(const[key,value] of this.pointerPageMap){
@@ -303,7 +301,7 @@ export class SecondChance implements IMMU {
   searchPagesbyPointerId(pi:number):Page[] {
     for(const[key,value] of this.pointerPageMap){
       if(key.getId()===pi){
-        return value; 
+        return value;
       }
     }
     throw new Error('There is not a pointer with this id so there no exist pages for return');
@@ -311,7 +309,7 @@ export class SecondChance implements IMMU {
   searchPointerByPointerId(pid:number):Pointer{
     for(const[key,value] of this.pointerPageMap){
       if(key.getId()===pid){
-        return key; 
+        return key;
       }
     }
     throw new Error('There is not a pointer with this id so there no exist pages for return');
@@ -336,7 +334,7 @@ export class SecondChance implements IMMU {
   for(const[key,value] of this.availableAddresses){
     if(value===true){
       this.availableAddresses.set(key,false);
-      return key; 
+      return key;
     }
   }
     throw new Error('There is not memory segmente available');
@@ -345,15 +343,15 @@ export class SecondChance implements IMMU {
     for(const[key,values] of this.pointerPageMap){
       for(const value of values){
         if(value.getId()===pidExit){
-          
+
           //this.fifoVirtualPages.push(pidExit);
           this.currenVirtualMemUsage+=value.getmemoryUse()/1024;
           const segmentReturn:number|null|undefined= value.getSegmentDir();
           value.setSegmentDir(null);
           value.toggleRam();
-          
+
           this.recalculateFragmentation(key);
-          return segmentReturn; 
+          return segmentReturn;
         }
       }
     }
@@ -386,12 +384,12 @@ export class SecondChance implements IMMU {
       const poinP = proc.getPointers().findIndex(puntero => puntero.getId() === newPointer.getId());
       if (poinP !== -1) {
         proc.getPointers()[poinP] = newPointer;
-        break; 
+        break;
       }
-      
+
     }
     this.pointerPageMap.delete(value);
-    
+
   }
  }
   totalFrag():number{
@@ -419,7 +417,7 @@ export class SecondChance implements IMMU {
               console.log("Datos de la pagina asociada al puntero:", pag);
             }
         }
-        
+
       }
     });
   }

@@ -9,7 +9,7 @@ export const routes: Routes = [
         component: LandingComponent
     },
     {
-        path: 'simulation',
+        path: 'simulation/:seed/:algorithm/:processes/:operations',
         component: SimulationComponent
     }
 ];

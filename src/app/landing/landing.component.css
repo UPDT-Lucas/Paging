@@ -25,7 +25,10 @@ select {
   border: 1px solid black;
   cursor: pointer;
   padding-left: 4px;
-  padding-right: 4px;
+}
+
+input {
+  padding-left: 8px;
 }
 
 .option {

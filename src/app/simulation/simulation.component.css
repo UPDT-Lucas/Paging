@@ -7,13 +7,21 @@
   overflow: auto; /* Permite el desplazamiento si el contenido es más grande que la ventana */
 }
 
+.time {
+  font-size: 32px;
+}
+
 
 .main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
   margin: 24px;
   padding: 24px;
   background-color: white;
   border-radius: 20px;
-  max-width: 75%; /* Asegura que no se desborde horizontalmente */
+  width: 65%;
+  align-items: center;
 }
 
 .options {
@@ -27,23 +35,49 @@
   display: flex;
   p {
     align-self: flex-end;
-    margin-right: 8px;
+    margin-right: 24px;
   }
 }
 
-/* Contenedor para la fila de cuadros */
-.grid-container {
+.alg {
   display: flex;
-  flex-wrap: wrap; /* Permite que los cuadros se ajusten y envuelvan */
-  margin: 20px 0;
+  gap: 48px;
+}
+
+.stats {
+  display: flex;
+  gap: 48px;
+}
+
+.each-stat {
+  width: 200px;
+  height: 100px;
+  background-color: aquamarine;
+  border-radius: 10px;
+  text-align: center;
+  flex-direction: column;
+  display: flex; /* Usamos flexbox */
+  justify-content: center; /* Centra el contenido horizontalmente */
+  align-items: center; /* Centra el contenido verticalmente */
+}
+
+/* Contenedor para la cuadrícula de 10x10 */
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr); /* 10 columnas de igual tamaño */
+  grid-template-rows: repeat(10, 1fr); /* 10 filas de igual tamaño */
+  width: 200px; /* Tamaño del contenedor para asegurar que sea un cuadrado */
+  height: 200px; /* Altura igual al ancho para formar el cuadrado */
+  margin: 20px 0; /* Margen opcional */
 }
 
 /* Estilos para los cuadros */
 .grid-item {
-  width: 15px;
-  height: 15px;
+  width: 100%; /* Ajusta al tamaño de la celda */
+  height: 100%; /* Hace que la altura sea igual al ancho */
   background-color: white;
-  border: 1px solid #000;
+  border: 1px solid #000; /* Si deseas tener un borde entre las celdas */
+  box-sizing: border-box; /* Asegura que el borde no rompa el layout */
   cursor: pointer;
 }
 
@@ -55,11 +89,14 @@
 
 /* Estilo para cada lista de procesos */
 .process-list {
-  width: 48%; /* Ajusta el ancho de cada lista */
+  min-width: 600px;
+  width: 100%; /* Ajusta el ancho de cada lista */
   border: 2px solid #333; /* Bordes alrededor de cada lista */
   padding: 10px; /* Espacio interno para que no se vea amontonado */
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* Sombra para darle un efecto más elegante */
   border-radius: 8px; /* Bordes redondeados para un mejor estilo */
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .stat-list{
@@ -73,10 +110,12 @@
 
 .headers p, .each p {
   width: 30%; /* Ajusta el ancho de cada columna */
+  color: white;
 }
 
 .headers p {
   font-weight: bold;
+  color: black;
 }
 
 h1 {
