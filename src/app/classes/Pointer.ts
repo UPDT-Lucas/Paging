@@ -10,4 +10,7 @@ export class Pointer {
   getId(): number {
     return this.id;
   }
+  getFragmentation():number{
+    return this.fragmentation;
+  }
 }

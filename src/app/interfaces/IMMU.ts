@@ -18,4 +18,5 @@ export interface IMMU {
   cKillProcess(ptrId: number): void;
   cDeleteProcess(pid: number): void;
   getClock(): number;
+
 }
