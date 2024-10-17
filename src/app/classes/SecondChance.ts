@@ -231,6 +231,9 @@ export class SecondChance implements IMMU {
      }
 
   }
+  getClock():number{
+    return this.clock;
+  }
 
   cDeleteProcess(pi:number): void {
     this.deletePointerMap(pi);
@@ -253,7 +256,7 @@ export class SecondChance implements IMMU {
     this.DeletePointerbyPointerId(pi);
   }
 
-  cUseProcess(pid:number){
+  cUsePointer(pid:number){
     const pages:Page[]=this.searchPagesbyPointerId(pid);
     for(const page of pages){
       if(page.isOnRam()){
