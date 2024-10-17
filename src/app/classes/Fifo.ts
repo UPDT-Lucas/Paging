@@ -222,7 +222,7 @@ export class Fifo implements IMMU {
     this.DeletePointerbyPointerId(pi);
   }
 
-  cUseProcess(pid:number){
+  cUsePointer(pid:number):void{
     const pages:Page[]=this.searchPagesbyPointerId(pid);
     for(const page of pages){
       if(page.isOnRam()){
