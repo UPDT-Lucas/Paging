@@ -4,6 +4,7 @@ import { MRU } from './classes/MRU';
 import { RND } from './classes/RND';
 import Rand from 'rand-seed';
 import { Page } from './classes/Page';
+import { SecondChance } from './classes/SecondChance';
 
 
 @Injectable({
@@ -67,7 +68,7 @@ export class PaginationService {
     }else if(idPaging===3){
       return new MRU();
     }else if(idPaging===4){
-      return new RND();
+      //return new RND();
     }
     return undefined;
   }
@@ -78,49 +79,49 @@ export class PaginationService {
     let usesStack:number[] = [];
     let instructionsMap:ValueTuple[]=[];
     let paginAlgorithm = this.getPaginAlgorithm(idPaging);
-    
+
 
     reader.onload = (e) => {
       const fileContent = e.target?.result as string;
       const lines = fileContent.split(/\r?\n/); // Divide el contenido en líneas
       // Expresiones regulares para cada tipo de instrucción
-      const usePattern = /use\((\d+)\)/; 
-      const newPattern = /new\((\d+),\s*(\d+)\)/; 
-      const deletePattern = /delete\((\d+)\)/; 
-      const killPattern = /kill\((\d+)\)/; 
+      const usePattern = /use\((\d+)\)/;
+      const newPattern = /new\((\d+),\s*(\d+)\)/;
+      const deletePattern = /delete\((\d+)\)/;
+      const killPattern = /kill\((\d+)\)/;
 
       lines.forEach((line, index) => {
         if (line.length === 0) {
           return; // Ignorar líneas vacías
         }
-   
+
         if (usePattern.test(line)) {
           const match = line.match(usePattern);
-          const numberInsideParentheses = match![1]; 
-    
+          const numberInsideParentheses = match![1];
+
           instructionsMap.push([1,[numberInsideParentheses]]);
           usesStack.push(Number(numberInsideParentheses));
         } else if (newPattern.test(line)) {
           const match = line.match(newPattern);
-          const firstNumber = match![1]; 
-          const secondNumber = match![2]; 
+          const firstNumber = match![1];
+          const secondNumber = match![2];
           instructionsMap.push([2,[firstNumber,secondNumber]]);
-          
+
         } else if (deletePattern.test(line)) {
           const match = line.match(deletePattern);
           const numberInsideParentheses = match![1];
-          instructionsMap.push([3,[numberInsideParentheses]]); 
-         
+          instructionsMap.push([3,[numberInsideParentheses]]);
+
         } else if (killPattern.test(line)) {
           const match = line.match(killPattern);
-          const numberInsideParentheses = match![1]; 
-          instructionsMap.push([4,[numberInsideParentheses]]); 
-          
+          const numberInsideParentheses = match![1];
+          instructionsMap.push([4,[numberInsideParentheses]]);
+
         }else{
            console.log(`Línea ${index + 1}: No se reconoce la instrucción.`);
         }
       });
-      
+
       instructionsMap.forEach(([id, value]) => {
         if(paginAlgorithm!==undefined){
           if(id===1){
@@ -133,15 +134,15 @@ export class PaginationService {
             paginAlgorithm.cKillProcess(Number(value[0]));
           }
         }
-        
+
       });
       if(paginAlgorithm!==undefined){
         console.log(paginAlgorithm.printProcesses());
       }
-      
+
     };
-    
-    
+
+
 
     reader.onerror = (e) => {
       console.error('Error al leer el archivo:', e);
@@ -151,11 +152,11 @@ export class PaginationService {
   }
 
   public generateInstructions(seed:string,idPaging:number): void {
-    
+
     let paginAlgorithm=this.getPaginAlgorithm(idPaging);
 
-    
+
   }
-  
+
 
 }

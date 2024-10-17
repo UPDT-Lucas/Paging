@@ -176,10 +176,6 @@ export class SecondChance implements IMMU {
     //this.printProcesses();
   }
 
-  getClock(): number {
-    return this.clock;
-  }
-
   getIdSecondChance(pages:Page[]|null):number|undefined{
     let index:number =0;
     if(pages!==null){
