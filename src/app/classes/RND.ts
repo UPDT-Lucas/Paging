@@ -14,6 +14,7 @@ export class RND implements IMMU {
   pageConsecutive: number;
   pointerConsecutive: number;
   pointerPageMap: Map<Pointer, Page[]>;
+  logs: Map<number, Map<number, Page[]>>;
   processes: Process[];
   loadedPages: Page[];
   availableAddresses: Map<number, boolean>;
@@ -27,6 +28,7 @@ export class RND implements IMMU {
     this.RAM = 20;
     this.pageSize = 4;
     this.availableAddresses = new Map<number, boolean>();
+    this.logs = new Map<number, Map<number, Page[]>>();
     this.currentMemUsage = 0;
     this.currenVirtualMemUsage = 0;
     this.clock = 0;
@@ -81,7 +83,7 @@ export class RND implements IMMU {
     return undefined;
   }
 
-  private selectRandomPage(toIgnore: number []): Page {
+  private selectRandomPage(toIgnore: number[]): Page {
     const swappablePages: Page[] = this.loadedPages.filter((page) => !toIgnore.includes(page.getId()));
     const randomIndex = Math.floor(this.random.next() * swappablePages.length);
     return swappablePages[randomIndex];
@@ -98,13 +100,16 @@ export class RND implements IMMU {
     return newPointer;
   }
 
-  cNewProcess(pid: number, size: number): void {
+  cNewProcess(pid: number, size: number): Map<number, Page[]> | undefined {
     const process = this.getOrCreateProcess(pid);
     const pagesArr: Page[] = this.allocatePages(size);
     const newPointer = this.mapPagesToPointer(pagesArr);
     this.pointerPageMap.set(newPointer, pagesArr);
     process.addPointer(newPointer);
     this.processes.push(process);
+    this.logs.set(pid, new Map<number, Page[]>());
+    this.logs.get(pid)!.set(newPointer.getId(), this.pointerPageMap.get(newPointer)!);
+    return this.logs.get(pid);
   }
 
   getOrCreateProcess(pid: number): Process {
@@ -120,24 +125,24 @@ export class RND implements IMMU {
   allocatePages(size: number): Page[] {
     const pagesNeeded: number = Math.ceil(size / 4096);
     let toIgnore: number[] = [];
-    for(let i = 0;i<pagesNeeded;i++){
+    for (let i = 0; i < pagesNeeded; i++) {
       toIgnore[i] = this.pageConsecutive + i;
     }
     let remainingSpace: number = size;
     let pageSpace: number = 0;
     let pagesArr: Page[] = [];
     for (let i = 0; i < pagesNeeded; i++) {
+      if (remainingSpace > 4096) {
+        pageSpace = 4096;
+      } else {
+        pageSpace = remainingSpace;
+      }
       if (this.currentMemUsage >= this.RAM) {
-        if(remainingSpace > 4096){
-          pageSpace = 4096;
-        }else{
-          pageSpace = remainingSpace;
-        }
         pagesArr.push(this.swapAndCreatePage(pageSpace, toIgnore));
       } else {
-        pagesArr.push(this.createNewPage(size));
+        pagesArr.push(this.createNewPage(pageSpace));
       }
-      if(remainingSpace < 4096){
+      if (remainingSpace < 4096) {
         this.trashing += remainingSpace;
       }
       remainingSpace -= 4096;
@@ -175,7 +180,6 @@ export class RND implements IMMU {
       throw new Error('Pointer not found in the map');
     }
     let rndPages: Page[] = [];
-    console.log("getting pages", pages);
     const pagesOnRam: Page[] = pages.filter((page) => page.isOnRam());
     pagesOnRam.forEach((page) => {
       const pageLoadedIndex = this.loadedPages.findIndex((loadedPage) => loadedPage.getId() === page.getId());
@@ -282,7 +286,7 @@ export class RND implements IMMU {
         }
       }
     }
-    throw new Error('Pagin not in the map, is not posible make the swap');
+    throw new Error('Paging not in the map, is not posible make the swap');
   }
 
   calculateFragmentation(pages: Page[]): number {
@@ -300,7 +304,7 @@ export class RND implements IMMU {
   private calculatePageFragmentation(pages: Page[]): number {
     let fragmentation: number = 0;
     pages.forEach((page) => {
-      if(page.getmemoryUse() != 4096){
+      if (page.getmemoryUse() != 4096) {
         fragmentation += page.getmemoryUse();
       }
     });
@@ -322,6 +326,10 @@ export class RND implements IMMU {
 
   printRecentlyUsed(): void {
     console.log(this.loadedPages);
+  }
+
+  getLoadedPages(): Page[] {
+    return this.loadedPages;
   }
 
   printPagesOnRam(): void {

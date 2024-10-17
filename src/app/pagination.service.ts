@@ -14,7 +14,7 @@ export class PaginationService {
 
   public getMRU(): void {
     const RNDP = new RND('seed');
-    for(let i=0;i<100;i++){
+    for(let i=1;i<100;i++){
       RNDP.cNewProcess(i, 4096);
       RNDP.getClock();
       RNDP.getTrashing();
@@ -26,11 +26,11 @@ export class PaginationService {
     const FIFO = new Fifo();
   }
 
-  public getRND(): Page[] {
+  public getRND(): Map<number, Page[]> [] {
     const RNDP = new RND('seed');
-    let logs: any[] = [];
+    let logs: Map<number, Page[]> [] = [];
     for(let i=0;i<100;i++){
-      logs[i] = RNDP.cNewProcess(i, 4096);
+      logs[i] = RNDP.cNewProcess(i, 4096)!;
       console.log(logs[i]);
       RNDP.getClock();
       RNDP.getTrashing();

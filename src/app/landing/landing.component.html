@@ -4,13 +4,15 @@
       <h1>
         Seed
       </h1>
-      <input type="number"/>
+      <input type="text"
+      [(ngModel)]="entry"
+      />
     </div>
     <div class="option">
       <h1>
         Algorithm
       </h1>
-      <select>
+      <select [(ngModel)]="selectedAlgorithm"> <!-- Enlace bidireccional al select -->
         <option>FIFO</option>
         <option>SC</option>
         <option>MRU</option>
@@ -21,13 +23,23 @@
       <h1>
         # Processes
       </h1>
-       <input type="number">
+      <select [(ngModel)]="selectedProcesses"> <!-- Enlace bidireccional al select -->
+        <option>Default</option>
+        <option>10</option>
+        <option>50</option>
+        <option>100</option>
+      </select>
     </div>
     <div class="option">
       <h1>
         # Operations
       </h1>
-       <input type="number">
+      <select [(ngModel)]="selectedOperations"> <!-- Enlace bidireccional al select -->
+        <option>Default</option>
+        <option>500</option>
+        <option>1000</option>
+        <option>5000</option>
+      </select>
     </div>
     <div class="option">
       <h1>
@@ -37,11 +49,9 @@
         <input type="file" id="fileInput">
         <label for="fileInput" class="file-label">Load file</label>
       </div>
-
     </div>
     <div class="image-container">
-      <img src="../assets/icons8-play.png" alt="" class="play-button"
-      routerLink= '/simulation'>
+      <img src="../assets/icons8-play.png" alt="" class="play-button" (click)="getData()">
     </div>
+  </div>
 </div>
-
