@@ -2,7 +2,7 @@ import { IMMU } from './../interfaces/IMMU';
 import { Page } from './Page';
 import { Process } from './Process';
 import { Pointer } from './Pointer';
-
+type ProcesoTupla = [number, Pointer, Page[]];
 export class MRU implements IMMU {
   RAM: number;
   pageSize: number;
@@ -13,15 +13,17 @@ export class MRU implements IMMU {
   pageConsecutive: number;
   pointerConsecutive: number;
   pointerPageMap: Map<Pointer, Page[]>;
+
   processes: Process[];
   fifoQueue: Process[];
+  pointerStack:Pointer[];
   recentlyUsedPages: number[];
   loadedPages: Page[];
   availableAddresses: Map<number, boolean>;
   deadProcesses: number[];
 
   constructor() {
-    this.RAM = 20;
+    this.RAM = 400;
     this.pageSize = 4;
     this.availableAddresses = new Map<number, boolean>();
     this.currentMemUsage = 0;
@@ -30,8 +32,10 @@ export class MRU implements IMMU {
     this.pageConsecutive = 0;
     this.pointerConsecutive = 0;
     this.trashing = 0;
+   
     this.processes = [];
     this.fifoQueue = [];
+    this.pointerStack=[];
     this.deadProcesses = [];
     this.recentlyUsedPages = [];
     this.loadedPages = [];
@@ -82,6 +86,7 @@ export class MRU implements IMMU {
 
   createProcess(pid: number): Process {
     const newProcess: Process = new Process(pid);
+    this.processes.push(newProcess);
     return newProcess;
   }
 
@@ -90,14 +95,34 @@ export class MRU implements IMMU {
     const newPointer: Pointer = new Pointer(this.pointerConsecutive, frag);
     return newPointer;
   }
-
-  cNewProcess(pid: number, size: number): void {
+   getProcesoTupla():ProcesoTupla[] | undefined {
+      let logs:ProcesoTupla[] = []; 
+      
+      for(const point of this.pointerStack){
+        
+        const pages = this.searchPagesbyPointerId(point.getId());
+        logs.push([this.getProcessByPointerId(point.getId()).getId(),point,pages]);
+      }
+      return logs;
+    }
+  cNewProcess(pid: number, size: number): ProcesoTupla[] | undefined  {
     const process = this.getOrCreateProcess(pid);
     const pagesArr: Page[] = this.allocatePages(size);
     const newPointer = this.mapPagesToPointer(pagesArr);
     this.pointerPageMap.set(newPointer, pagesArr);
     process.addPointer(newPointer);
-    this.processes.push(process);
+    this.pointerStack.push(newPointer);
+    
+    return this.getProcesoTupla();
+
+  }
+  searchPagesbyPointerId(pi:number):Page[] {
+    for(const[key,value] of this.pointerPageMap){
+      if(key.getId()===pi){
+        return value;
+      }
+    }
+    throw new Error('There is not a pointer with this id so there no exist pages for return');
   }
 
   getOrCreateProcess(pid: number): Process {
@@ -173,7 +198,7 @@ export class MRU implements IMMU {
     return newPointer;
   }
 
-  cUsePointer(pointerId: number): void {
+  cUsePointer(pointerId: number): ProcesoTupla[]|undefined  {
     const pointer = this.getPointerById(pointerId);
     const pages = this.pointerPageMap.get(pointer!);
     if (!pages) {
@@ -209,8 +234,11 @@ export class MRU implements IMMU {
       this.recentlyUsedPages.push(page.getId());
     });
     this.loadedPages.push(...mruPages);
-    this.clock += pagesNotOnRam.length * 1;
-    this.clock += pagesOnRam.length * 5;
+    this.clock += pagesNotOnRam.length * 5;
+    this.trashing +=pagesNotOnRam.length * 5;
+    this.clock += pagesOnRam.length * 1;
+
+    return this.getProcesoTupla();
   }
 
   replacePageUse(pages: Page[]): number {
@@ -225,16 +253,17 @@ export class MRU implements IMMU {
   }
 
 
-  cKillProcess(pid: number): void {
+  cKillProcess(pid: number): ProcesoTupla[]|undefined {
     const process = this.getProcessByID(pid);
     const pointers = process.getPointers();
     pointers.forEach((pointer) => {
       this.cDeleteProcess(pointer.getId());
     })
     this.processes = this.processes.filter((process) => process.id !== pid);
+    return this.getProcesoTupla();
   }
 
-  cDeleteProcess(ptrId: number): void {
+  cDeleteProcess(ptrId: number): ProcesoTupla[]|undefined  {
     const pointer = this.getPointerById(ptrId);
     if (!pointer) {
       throw new Error('Pointer not found');
@@ -250,6 +279,9 @@ export class MRU implements IMMU {
     const ptr = this.getPointerById(ptrId)!
     process.removePointer(ptr);
     this.pointerPageMap.delete(pointer);
+    this.pointerStack=this.pointerStack.filter(obj => obj.getId() !== pointer.getId());
+    return this.getProcesoTupla();
+
   }
 
   freePage(page: Page): void {
@@ -323,6 +355,10 @@ export class MRU implements IMMU {
       }
     });
     return fragmentation;
+  }
+
+  getLoadedPages(): Page[] {
+    return this.loadedPages;
   }
 
   printProcesses(): void {

@@ -2,7 +2,7 @@ import { IMMU } from './../interfaces/IMMU';
 import { Page } from './Page';
 import { Process } from './Process';
 import { Pointer } from './Pointer';
-
+type ProcesoTupla = [number, Pointer, Page[]];
 export class SecondChance implements IMMU {
   RAM: number;
   pageSize: number;
@@ -16,6 +16,7 @@ export class SecondChance implements IMMU {
   processes: Process[];
   fifoQueue: Process[];
   fifoStaticPages: Page[];
+  pointerStack:Pointer[];
   //fifoVirtualPages: number[];
   availableAddresses: Map<number|null|undefined,boolean>;
   deadProcesses:number[];
@@ -30,10 +31,13 @@ export class SecondChance implements IMMU {
     this.pageConsecutive = 0;
     this.pointerConsecutive = 0;
     this.trashing=0;
+
     this.processes = [];
     this.fifoQueue = [];
     this.deadProcesses=[];
     this.fifoStaticPages=[];
+    this.pointerStack=[];
+
     //this.fifoVirtualPages=[];
     this.pointerPageMap = new Map<Pointer, Page[]>();
     for(let i=0;i<100;i++){
@@ -71,7 +75,7 @@ export class SecondChance implements IMMU {
     return newPointer;
   }
 
-  cNewProcess(pid: number, size: number): void {
+  cNewProcess(pid: number, size: number): ProcesoTupla[] | undefined  {
     //bytesSize = size / 1000;
     //const exactPages = Math.ceil(kb / this.pageSize);
     var process: Process;
@@ -173,9 +177,20 @@ export class SecondChance implements IMMU {
 
     }
     process.addPointer(newPointer);
+    this.pointerStack.push(newPointer);
+    return this.getProcesoTupla();
     //this.printProcesses();
   }
-
+  getProcesoTupla():ProcesoTupla[] | undefined {
+        let logs:ProcesoTupla[] = []; 
+        
+        for(const point of this.pointerStack){
+          
+          const pages = this.searchPagesbyPointerId(point.getId());
+          logs.push([this.getProcessByPointerId(point.getId()).getId(),point,pages]);
+        }
+        return logs;
+  }
   getIdSecondChance(pages:Page[]|null):number|undefined{
     let index:number =0;
     if(pages!==null){
@@ -213,7 +228,7 @@ export class SecondChance implements IMMU {
 
   }
 
-  cKillProcess(pid:number): void {
+  cKillProcess(pid:number): ProcesoTupla[] | undefined  {
    const proc = this.processes.find(obj => obj.getId() === pid);
    const procInd = this.processes.findIndex(obj => obj.getId() === pid);
    if(proc!==undefined){
@@ -225,13 +240,13 @@ export class SecondChance implements IMMU {
           this.processes.splice(procInd, 1);
       }
      }
-
+     return this.getProcesoTupla();
   }
   getClock():number{
     return this.clock;
   }
 
-  cDeleteProcess(pi:number): void {
+  cDeleteProcess(pi:number): ProcesoTupla[] | undefined  {
     this.deletePointerMap(pi);
     const pag:Page[]=this.searchPagesbyPointerId(pi);
 
@@ -250,6 +265,8 @@ export class SecondChance implements IMMU {
 
     }
     this.DeletePointerbyPointerId(pi);
+    this.pointerStack=this.pointerStack.filter(obj => obj.getId() !== pi);
+    return this.getProcesoTupla();
   }
 
   cUsePointer(pid:number){
@@ -285,6 +302,8 @@ export class SecondChance implements IMMU {
 
       }
     }
+    return this.getProcesoTupla();
+
 
   }
 
@@ -389,6 +408,12 @@ export class SecondChance implements IMMU {
 
     }
     this.pointerPageMap.delete(value);
+    const index = this.pointerStack.findIndex(obj => obj.getId() === newPointer.getId());
+
+    if (index !== -1) {
+      // Reemplaza el objeto en el índice encontrado con el nuevo objeto
+      this.pointerStack[index] = newPointer;
+    }
 
   }
  }
@@ -398,6 +423,17 @@ export class SecondChance implements IMMU {
       totalFrag+=key.getFragmentation();
     }
     return totalFrag;
+  }
+  getLoadedPages(): Page[] {
+    let loadedPages=[];
+    for(const[key,values] of this.pointerPageMap){
+      for(const page of values){
+        if(this.fifoStaticPages.some(p => p.getId() === page.getId())){
+          loadedPages.push(page);
+        }
+      }
+    }
+    return loadedPages;
   }
 
   printProcesses(): void {
