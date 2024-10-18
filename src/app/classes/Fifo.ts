@@ -2,7 +2,7 @@ import { IMMU } from './../interfaces/IMMU';
 import { Page } from './Page';
 import { Process } from './Process';
 import { Pointer } from './Pointer';
-
+type ProcesoTupla = [number, Pointer, Page[]];
 export class Fifo implements IMMU {
   RAM: number;
   pageSize: number;
@@ -16,6 +16,9 @@ export class Fifo implements IMMU {
   processes: Process[];
   fifoQueue: Process[];
   fifoStaticPages: number[];
+  pointerStack:Pointer[];
+  loadedPages: Page[];
+ 
   //fifoVirtualPages: number[];
   availableAddresses: Map<number|null|undefined,boolean>;
   deadProcesses:number[];
@@ -32,9 +35,12 @@ export class Fifo implements IMMU {
     this.pageConsecutive = 0;
     this.pointerConsecutive = 0;
     this.trashing=0;
+    
+    this.loadedPages=[];
     this.processes = [];
     this.fifoQueue = [];
     this.deadProcesses=[];
+    this.pointerStack=[];
     this.fifoStaticPages=[];
     //this.fifoVirtualPages=[];
     this.pointerPageMap = new Map<Pointer, Page[]>();
@@ -77,7 +83,7 @@ export class Fifo implements IMMU {
     return newPointer;
   }
 
-  cNewProcess(pid: number, size: number): void {
+  cNewProcess(pid: number, size: number): ProcesoTupla[]| undefined {
     var process: Process;
 
     if (this.isExistingProces(pid)) {
@@ -118,6 +124,7 @@ export class Fifo implements IMMU {
 
           this.pageConsecutive++;
           pagesArr.push(newPage);
+          
 
         }else{
           this.currentMemUsage+=4;
@@ -137,6 +144,7 @@ export class Fifo implements IMMU {
           const newPage:Page = new Page(this.pageConsecutive,true,true,freeSegment,bytesDif);
           this.pageConsecutive++;
           pagesArr.push(newPage);
+          
         }
        
       }
@@ -160,6 +168,7 @@ export class Fifo implements IMMU {
           const newPage:Page = new Page(this.pageConsecutive,true,true,segmentReuse,size);
           this.pageConsecutive++;
           pagesArr.push(newPage);
+          this.loadedPages.push(newPage);
 
         }else{
           this.currentMemUsage+=4;
@@ -173,6 +182,7 @@ export class Fifo implements IMMU {
           const newPage:Page = new Page(this.pageConsecutive,true,true,freeSegment,size);
           this.pageConsecutive++;
           pagesArr.push(newPage);
+          
         }
         newPointer = this.createPointer(this.calculateFragmentation(pagesArr));
         this.pointerPageMap.set(newPointer,pagesArr);
@@ -181,12 +191,24 @@ export class Fifo implements IMMU {
     }
 
     process.addPointer(newPointer);
+    this.pointerStack.push(newPointer);
+    
+    return this.getProcesoTupla();
     //this.printProcesses();
 
 
   }
-
-  cKillProcess(pid:number): void {
+  getProcesoTupla():ProcesoTupla[] | undefined {
+        let logs:ProcesoTupla[] = []; 
+        
+        for(const point of this.pointerStack){
+          
+          const pages = this.searchPagesbyPointerId(point.getId());
+          logs.push([this.getProcessByPointerId(point.getId()).getId(),point,pages]);
+        }
+        return logs;
+  }
+  cKillProcess(pid:number): ProcesoTupla[] | undefined  {
    const proc = this.processes.find(obj => obj.getId() === pid);
    const procInd = this.processes.findIndex(obj => obj.getId() === pid);
    if(proc!==undefined){
@@ -196,12 +218,14 @@ export class Fifo implements IMMU {
           this.cDeleteProcess(point.getId());
         }
           this.processes.splice(procInd, 1);
+
       }
      }
+     return this.getProcesoTupla();
    
   }
 
-  cDeleteProcess(pi:number): void {
+  cDeleteProcess(pi:number): ProcesoTupla[] | undefined  {
     this.deletePointerMap(pi);
     const pag:Page[]=this.searchPagesbyPointerId(pi);
 
@@ -212,6 +236,7 @@ export class Fifo implements IMMU {
         const  index = this.fifoStaticPages.indexOf(page.getId());
         this.fifoStaticPages.splice(index,1);
 
+
       }else if(page.getSegmentDir()==null){
         this.currenVirtualMemUsage-=page.getmemoryUse()/1024;
         //const  index = this.fifoVirtualPages.indexOf(page.getId());
@@ -220,9 +245,11 @@ export class Fifo implements IMMU {
       
     }
     this.DeletePointerbyPointerId(pi);
+    this.pointerStack=this.pointerStack.filter(obj => obj.getId() !== pi);
+    return this.getProcesoTupla();
   }
 
-  cUsePointer(pid:number):void{
+  cUsePointer(pid:number):ProcesoTupla[] | undefined{
     const pages:Page[]=this.searchPagesbyPointerId(pid);
     for(const page of pages){
       if(page.isOnRam()){
@@ -249,6 +276,7 @@ export class Fifo implements IMMU {
 
       }
     }
+    return this.getProcesoTupla();
 
   }   
 
@@ -356,6 +384,14 @@ export class Fifo implements IMMU {
       
     }
     this.pointerPageMap.delete(value);
+
+    const index = this.pointerStack.findIndex(obj => obj.getId() === newPointer.getId());
+
+    if (index !== -1) {
+      // Reemplaza el objeto en el índice encontrado con el nuevo objeto
+      this.pointerStack[index] = newPointer;
+    }
+
     
   }
 
@@ -366,6 +402,18 @@ export class Fifo implements IMMU {
       totalFrag+=key.getFragmentation();
     }
     return totalFrag;
+  }
+  getLoadedPages(): Page[] {
+    let loadedPages=[];
+    for(const[key,values] of this.pointerPageMap){
+      for(const page of values){
+        if(this.fifoStaticPages.includes(page.getId())){
+          loadedPages.push(page);
+        }
+      }
+    }
+    console.log(loadedPages);
+    return loadedPages;
   }
 
   printProcesses(): void {
