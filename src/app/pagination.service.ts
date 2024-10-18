@@ -5,19 +5,34 @@ import { RND } from './classes/RND';
 import Rand from 'rand-seed';
 import { Page } from './classes/Page';
 import { SecondChance } from './classes/SecondChance';
+import { Observable } from 'rxjs';
 
 
 @Injectable({
   providedIn: 'root',
 })
 export class PaginationService {
+  private rnd: RND;
 
   constructor() {
-    this.testReadFile();
-
+    this.rnd = new RND('seed');
   }
 
   rndLoaded: any [] = [];
+  trashing: number [] = [];
+  memUsg: number [] = [];
+  clock: number [] = [];
+  virtualMemUsg: number [] = [];
+
+  private selectedFile: File | null = null;
+
+  setFile(file: File | null) {
+    this.selectedFile = file;
+  }
+
+  getFile(): File | null {
+    return this.selectedFile;
+  }
 
   public getMRU(): void {
     const RNDP = new RND('seed');
@@ -33,22 +48,38 @@ export class PaginationService {
     const FIFO = new Fifo();
   }
 
-  public getRND(): Map<number, Page[]> [] {
+  public getRND(): Page[][]{
     const RNDP = new RND('seed');
-    let logs: Map<number, Page[]> [] = [];
-    for(let i=0;i<100;i++){
-      logs[i] = RNDP.cNewProcess(i, 4096)!;
-      console.log(logs[i]);
-      RNDP.getClock();
-      RNDP.getTrashing();
-      RNDP.getCurrentMemUsage();
+    let logs: Page [][]= [];
+    for(let i=0;i<30;i++){
+      logs.push(RNDP.cNewProcess(i, 10000));
+      this.clock[i] =  RNDP.getClock();
+      this.trashing[i] = RNDP.getTrashing();
+      this.memUsg[i] =  RNDP.getCurrentMemUsage();
       this.rndLoaded[i] = RNDP.getLoadedPages();
+      this.virtualMemUsg[i] = RNDP.getVirtualMemUsage();
     }
     return logs;
   }
 
   public getLoadedRND(): Page[] {
     return this.rndLoaded;
+  }
+
+  public getTrashing(): number[] {
+    return this.trashing;
+  }
+
+  public getMemUsg(): number[] {
+    return this.memUsg;
+  }
+
+  public getClock(): number[] {
+    return this.clock;
+  }
+
+  public getVirtualMemUsg(): number[] {
+    return this.virtualMemUsg;
   }
 
   public getSND(): void {
@@ -60,6 +91,8 @@ export class PaginationService {
 
     this.processLines(simulatedFile,1);
   }
+
+
   public getPaginAlgorithm(idPaging:number):Fifo|SecondChance|MRU|RND|undefined{
     if(idPaging===1){
       return new Fifo();
@@ -86,7 +119,7 @@ export class PaginationService {
       const lines = fileContent.split(/\r?\n/); // Divide el contenido en líneas
       // Expresiones regulares para cada tipo de instrucción
       const usePattern = /use\((\d+)\)/;
-      const newPattern = /new\((\d+),\s*(\d+)\)/;
+      const newPattern = /new\((\d+),(\d+)\)/;
       const deletePattern = /delete\((\d+)\)/;
       const killPattern = /kill\((\d+)\)/;
 
@@ -141,9 +174,6 @@ export class PaginationService {
       }
 
     };
-
-
-
     reader.onerror = (e) => {
       console.error('Error al leer el archivo:', e);
     };

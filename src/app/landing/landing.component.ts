@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
+import { PaginationService } from '../pagination.service';
 
 
 @Component({
@@ -15,19 +16,26 @@ export class LandingComponent {
   selectedAlgorithm: string = "FIFO"
   selectedProcesses: string = "Default"
   selectedOperations: string = "Default"
+  selectedFile: File | null = null;
 
-  constructor(private router: Router) {} // Inyectar el router
+  constructor(private router: Router, private paginationService: PaginationService) {}
 
   getData(){
-    console.log(this.entry)
-    console.log(this.selectedAlgorithm)
-    console.log(this.selectedProcesses)
-    console.log(this.selectedOperations)
+    this.paginationService.setFile(this.selectedFile);
+
     this.router.navigate([
       '/simulation',
       this.entry,
       this.selectedAlgorithm,
       this.selectedProcesses,
       this.selectedOperations]);
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedFile = input.files[0]; // Guardar el archivo seleccionado
+      console.log(this.selectedFile); // Puedes inspeccionar el archivo aquí
+    }
   }
 }

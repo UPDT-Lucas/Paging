@@ -59,6 +59,7 @@
   display: flex; /* Usamos flexbox */
   justify-content: center; /* Centra el contenido horizontalmente */
   align-items: center; /* Centra el contenido verticalmente */
+  color: white;
 }
 
 /* Contenedor para la cuadrícula de 10x10 */

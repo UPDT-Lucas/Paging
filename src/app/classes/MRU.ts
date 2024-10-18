@@ -186,8 +186,6 @@ export class MRU implements IMMU {
       const pageLoadedIndex = this.loadedPages.findIndex((loadedPage) => loadedPage.getId() === page.getId());
       this.loadedPages.splice(pageLoadedIndex, 1);
       mruPages.push(page);
-      //! Cambié esto para que cuando hago un use de algo en RAM igual me
-      //! lo ponga en la lista de recientemente usados para el reemplazo
       this.recentlyUsedPages = this.recentlyUsedPages.filter((page) => page !== pageLoadedIndex);
       this.recentlyUsedPages.push(page.getId());
     })

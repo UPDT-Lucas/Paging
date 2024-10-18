@@ -24,7 +24,7 @@ export class Fifo implements IMMU {
     this.RAM = 400;
     this.pageSize = 4;
 
-    this.availableAddresses = new Map<number|null|undefined,boolean>();    
+    this.availableAddresses = new Map<number|null|undefined,boolean>();
 
     this.currentMemUsage = 0;
     this.currenVirtualMemUsage=0;
@@ -92,12 +92,12 @@ export class Fifo implements IMMU {
     if(size>4096){
 
       const pagesNeeded :number =  Math.ceil(size/4096);
-      
+
       let pagesCal :number=size/4096;
       let pagesArr:Page[]=[];
       for(let i = 0;i<pagesNeeded;i++){
 
-        
+
         if(this.currentMemUsage>=400){
           this.fifoStaticPages.push(this.pageConsecutive);
           this.clock +=5;
@@ -138,7 +138,7 @@ export class Fifo implements IMMU {
           this.pageConsecutive++;
           pagesArr.push(newPage);
         }
-       
+
       }
 
 
@@ -155,7 +155,7 @@ export class Fifo implements IMMU {
           this.trashing+=5;
           const exitID:number|undefined = this.fifoStaticPages.shift();
           const segmentReuse:number|null|undefined = this.swapingPages(exitID);
-          
+
 
           const newPage:Page = new Page(this.pageConsecutive,true,true,segmentReuse,size);
           this.pageConsecutive++;
@@ -167,8 +167,8 @@ export class Fifo implements IMMU {
           this.fifoStaticPages.push(this.pageConsecutive);
 
           const freeSegment:number|null|undefined = this.getNewSegment();
-          
-        
+
+
 
           const newPage:Page = new Page(this.pageConsecutive,true,true,freeSegment,size);
           this.pageConsecutive++;
@@ -198,7 +198,7 @@ export class Fifo implements IMMU {
           this.processes.splice(procInd, 1);
       }
      }
-   
+
   }
 
   cDeleteProcess(pi:number): void {
@@ -217,7 +217,7 @@ export class Fifo implements IMMU {
         //const  index = this.fifoVirtualPages.indexOf(page.getId());
         //this.fifoVirtualPages.splice(index,1);
       }
-      
+
     }
     this.DeletePointerbyPointerId(pi);
   }
@@ -250,7 +250,7 @@ export class Fifo implements IMMU {
       }
     }
 
-  }   
+  }
 
   DeletePointerbyPointerId(pi:number):boolean{
     for(const[key,value] of this.pointerPageMap){
@@ -265,7 +265,7 @@ export class Fifo implements IMMU {
   searchPagesbyPointerId(pi:number):Page[] {
     for(const[key,value] of this.pointerPageMap){
       if(key.getId()===pi){
-        return value; 
+        return value;
       }
     }
     throw new Error('There is not a pointer with this id so there no exist pages for return');
@@ -273,7 +273,7 @@ export class Fifo implements IMMU {
   searchPointerByPointerId(pid:number):Pointer{
     for(const[key,value] of this.pointerPageMap){
       if(key.getId()===pid){
-        return key; 
+        return key;
       }
     }
     throw new Error('There is not a pointer with this id so there no exist pages for return');
@@ -299,7 +299,7 @@ export class Fifo implements IMMU {
 
     if(value===true){
       this.availableAddresses.set(key,false);
-      return key; 
+      return key;
 
     }
   }
@@ -309,7 +309,7 @@ export class Fifo implements IMMU {
     for(const[key,values] of this.pointerPageMap){
       for(const value of values){
         if(value.getId()===pidExit){
-          
+
           //this.fifoVirtualPages.push(pidExit);
           this.currenVirtualMemUsage+=value.getmemoryUse()/1024;
 
@@ -351,12 +351,12 @@ export class Fifo implements IMMU {
       const poinP = proc.getPointers().findIndex(puntero => puntero.getId() === newPointer.getId());
       if (poinP !== -1) {
         proc.getPointers()[poinP] = newPointer;
-        break; 
+        break;
       }
-      
+
     }
     this.pointerPageMap.delete(value);
-    
+
   }
 
  }
@@ -385,8 +385,21 @@ export class Fifo implements IMMU {
               console.log("Datos de la pagina asociada al puntero:", pag);
             }
         }
-        
+
       }
     });
+  }
+
+  getLoadedPages(): Page[] {
+    let loadedPages=[];
+    for(const[key,values] of this.pointerPageMap){
+      for(const page of values){
+        if(this.fifoStaticPages.includes(page.getId())){
+          loadedPages.push(page);
+        }
+      }
+    }
+    console.log(loadedPages);
+    return loadedPages;
   }
 }
