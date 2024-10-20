@@ -2,7 +2,7 @@
   <div class="main-content">
 
     <div class="options">
-      <img src="../../assets/icons8-start-60.png" alt="">
+      <img src="../../assets/icons8-start-60.png" alt="" (click)="startSimulation()">
       <div class="clock-container">
         <p class="time">
           {{actualClock}}
@@ -33,7 +33,7 @@
       </div>
       <div class="each-stat" [style.backgroundColor]="statsAlgColor">
         <p>Fragmentation</p>
-        <p>100MB</p>
+        <p>{{actualFragmentation}}KB</p>
       </div>
     </div>
 
@@ -41,8 +41,8 @@
       <div class="left">
         <h1> RAM (FIFO)</h1>
         <div class="grid-container">
-          @for (item of getLoadedPages; track $index) {
-            <div class="grid-item" [style.backgroundColor]="getLoadedColor($index)"></div>
+          @for (item of loadedPages; track $index) {
+            <div class="grid-item" [style.backgroundColor]="this.ramColors[$index]"></div>
           }
         </div>
       </div>
@@ -56,12 +56,12 @@
         </div>
         @for (log of visibleLogs; track log; let i = $index) {
           @for(item of log; track item; let j = $index) {
-            <div class="each" [style.backgroundColor]="getLoadedColor(i)">
+            <div class="each" [style.backgroundColor]="getLoadedColor(processIds[i])">
               <p>{{item.id}}</p>
-              <p>{{i}}</p>
+              <p>{{processIds[i]}}</p>
               <p>{{item.onRam}}</p>
-              <p>Yes</p>
-              <p>Yes</p>
+              <p>{{item.segmentDir}}</p>
+              <p>{{pointers[i]}}</p>
             </div>
           }
         }
@@ -72,7 +72,7 @@
       <div class="left">
         <h1> RAM (OPT)</h1>
         <div class="grid-container">
-          @for (item of getLoadedPages; track $index) {
+          @for (item of loadedPages; track $index) {
             <div class="grid-item" [style.backgroundColor]="getLoadedColorOPT($index)"></div>
           }
         </div>

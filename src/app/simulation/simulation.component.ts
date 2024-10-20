@@ -2,6 +2,12 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { PaginationService } from '../pagination.service';
 import { ActivatedRoute } from '@angular/router';
 import { Page } from '../classes/Page';
+import { Pointer } from '../classes/Pointer';
+import { Fifo } from '../classes/Fifo';
+import { SecondChance } from '../classes/SecondChance';
+import { MRU } from '../classes/MRU';
+import { RND } from '../classes/RND';
+import { cloneDeep } from 'lodash';
 
 @Component({
   selector: 'app-simulation',
@@ -20,8 +26,12 @@ export class SimulationComponent implements OnInit, OnDestroy {
   selectedFile: File | null = null;
   ready: boolean = false;
 
-  allSimulationLogs: Page [][]= [];  // Guardará todos los logs
-  visibleLogs: Page [][]= [];  // Se mostrarán los logs progresivamente
+  actualProcessId: number = 0;
+
+  allSimulationLogs: ProcesoTupla[][] = [];  // Guardará todos los logs
+  processIds: number[] = [];  // Guardará los ids de los procesos
+  pointers: number[] = [];
+  visibleLogs: Page[][] = [];  // Se mostrarán los logs progresivamente
   optLogs: Page[] = [];  // Guardará todos los logs
   visibleOptLogs: Page[] = [];  // Se mostrarán los logs progresivamente
   currentLogIndex: number = 0; // Índice del log actual a mostrar
@@ -29,8 +39,10 @@ export class SimulationComponent implements OnInit, OnDestroy {
   loadedColors: string[] = [];
   loadedColorsOpt: string[] = [];
 
-  getLoadedPages: Page[] = [];
-  getAllLoadedPages: Page[] = [];
+  loadedPages: Page [] = [];
+  allLoadedPages: Page[][] = [];
+
+  actualPtr: number = 0;
 
   items = Array(100).fill("white");
   time: number = 0;
@@ -48,8 +60,15 @@ export class SimulationComponent implements OnInit, OnDestroy {
   actualVirtualMemUsg: number = 0;
   virtualMemUsg: number[] = [];
   fileContent: string | ArrayBuffer | null | undefined;
+  ramColors: string[] = [];
 
-  constructor(private service: PaginationService, private route: ActivatedRoute) {}
+  usesStack: number[] = [];
+  instructionsMap: ValueTuple[] = [];
+  indexToColors: number[] = [];
+  actualPagingAlg: Fifo | SecondChance | MRU | RND | undefined;
+  actualFragmentation: number = 0;
+
+  constructor(private service: PaginationService, private route: ActivatedRoute) { }
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
@@ -59,11 +78,11 @@ export class SimulationComponent implements OnInit, OnDestroy {
       this.operations = params['operations'];
 
       this.selectedFile = this.service.getFile();
-      console.log(this.selectedFile);
-      if (this.selectedFile) {
-        console.log(this.selectedFile);
+      if (this.selectedFile instanceof File) {
+        this.readFile(this.selectedFile);
+      } else {
+        console.error('selectedFile is not a valid File object:', this.selectedFile);
       }
-      this.callAlgorithm();  // Iniciar la simulación
     });
   }
 
@@ -76,41 +95,137 @@ export class SimulationComponent implements OnInit, OnDestroy {
   }
 
   getVRamPercentage(): number {
-    return Math.round((this.actualVirtualMemUsg / 40) * 100);
-  }
-
-  getRamPercentage(): number {
     return Math.round((this.actualVirtualMemUsg / 400) * 100);
   }
 
-  // readFile(file: File) {
-  //   const reader = new FileReader();
-  //   reader.onload = (event) => {
-  //     this.fileContent = event.target?.result;  // Guardamos el contenido leído
-  //     this.processFileContent();  // Procesar el contenido del archivo
-  //   };
-  //   reader.onerror = (event) => {
-  //     console.error("Error al leer el archivo: ", event);
-  //   };
-  //   reader.readAsText(file);
-  // }
+  getRamPercentage(): number {
+    return Math.round((this.actualMemUsg / 400) * 100);
+  }
 
-  // processFileContent() {
-  //   if (typeof this.fileContent === 'string') {
-  //     const fileLines = this.fileContent.split('\n');
-  //     fileLines.forEach((line, index) => {
-  //       console.log(`Línea ${index + 1}: ${line}`);
-  //     });
-  //   }
-  // }
+  readFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      this.fileContent = event.target?.result;
+      this.processFileContent();
+    };
+    reader.onerror = (event) => {
+      console.error("Error al leer el archivo: ", event);
+    };
+    reader.readAsText(file);
+  }
 
+  processFileContent() {
+    this.actualPagingAlg = this.getPagingAlg(this.algorithm, this.seed);
 
-  // Método para iniciar el temporizador
+    if (typeof this.fileContent === 'string') {
+      const fileLines = this.fileContent.split('\n');
+      const usePattern = /use\((\d+)\)/;
+      const newPattern = /new\((\d+),(\d+)\)/;
+      const deletePattern = /delete\((\d+)\)/;
+      const killPattern = /kill\((\d+)\)/;
+
+      fileLines.forEach((line, index) => {
+        if (line.length === 0) {
+          return; // Ignorar líneas vacías
+        }
+
+        if (usePattern.test(line)) {
+          const match = line.match(usePattern);
+          const numberInsideParentheses = match![1];
+
+          this.instructionsMap.push([1, [numberInsideParentheses]]);
+          this.usesStack.push(Number(numberInsideParentheses));
+        } else if (newPattern.test(line)) {
+          const match = line.match(newPattern);
+          const firstNumber = match![1];
+          const secondNumber = match![2];
+          this.instructionsMap.push([2, [firstNumber, secondNumber]]);
+        } else if (deletePattern.test(line)) {
+          const match = line.match(deletePattern);
+          const numberInsideParentheses = match![1];
+          this.instructionsMap.push([3, [numberInsideParentheses]]);
+        } else if (killPattern.test(line)) {
+          const match = line.match(killPattern);
+          const numberInsideParentheses = match![1];
+          this.instructionsMap.push([4, [numberInsideParentheses]]);
+        } else {
+          console.log(`Línea ${index + 1}: No se reconoce la instrucción.`);
+        }
+      });
+
+    }
+    this.instructionsMap.forEach(([id, value]) => {
+
+      // resultado = this.generateData(id,value,paginAlgorithm)
+      // const deepCopiedResult = cloneDeep(resultado);
+      // logs.push(deepCopiedResult!);
+
+      if(this.actualPagingAlg!==undefined){
+        if(id===1){
+          this.allSimulationLogs.push(cloneDeep(this.actualPagingAlg.cUsePointer(Number(value[0]))!));
+          this.allLoadedPages.push(cloneDeep(this.actualPagingAlg.getLoadedPages()));
+          this.memUsg.push(cloneDeep(this.actualPagingAlg.getCurrentMemUsage()));
+          this.clock.push(cloneDeep(this.actualPagingAlg.getClock()));
+          this.trashing.push(cloneDeep(this.actualPagingAlg.getTrashing()));
+          this.virtualMemUsg.push(cloneDeep(this.actualPagingAlg.getCurrentVirtualMemUsage()));
+        }else if(id===2){
+          this.allSimulationLogs.push(cloneDeep(this.actualPagingAlg.cNewProcess(Number(value[0]),Number(value[1]))!));
+          this.allLoadedPages.push(cloneDeep(this.actualPagingAlg.getLoadedPages()));
+          this.memUsg.push(cloneDeep(this.actualPagingAlg.getCurrentMemUsage()));
+          this.clock.push(cloneDeep(this.actualPagingAlg.getClock()));
+          this.trashing.push(cloneDeep(this.actualPagingAlg.getTrashing()));
+          this.virtualMemUsg.push(cloneDeep(this.actualPagingAlg.getCurrentVirtualMemUsage()));
+        }else if(id===3){
+          this.allSimulationLogs.push(cloneDeep(this.actualPagingAlg.cDeleteProcess(Number(value[0]))!));
+          this.allLoadedPages.push(cloneDeep(this.actualPagingAlg.getLoadedPages()));
+          this.memUsg.push(cloneDeep(this.actualPagingAlg.getCurrentMemUsage()));
+          this.clock.push(cloneDeep(this.actualPagingAlg.getClock()));
+          this.trashing.push(cloneDeep(this.actualPagingAlg.getTrashing()));
+          this.virtualMemUsg.push(cloneDeep(this.actualPagingAlg.getCurrentVirtualMemUsage()));
+        }else if(id===4){
+          this.allSimulationLogs.push(cloneDeep(this.actualPagingAlg.cKillProcess(Number(value[0]))!));
+          this.allLoadedPages.push(cloneDeep(this.actualPagingAlg.getLoadedPages()));
+          this.memUsg.push(cloneDeep(this.actualPagingAlg.getCurrentMemUsage()));
+          this.clock.push(cloneDeep(this.actualPagingAlg.getClock()));
+          this.trashing.push(cloneDeep(this.actualPagingAlg.getTrashing()));
+          this.virtualMemUsg.push(cloneDeep(this.actualPagingAlg.getCurrentVirtualMemUsage()));
+        }
+      }
+    });
+    this.precomputeColors();
+  }
+
   startSimulation() {
     this.timer = setInterval(() => {
+      this.visibleLogs = [];
+      this.processIds = [];
+      this.loadedPages = [];
+      this.pointers = [];
+      this.indexToColors = [];
+      this.actualFragmentation = 0;
+      let pageInRam = 0;
       if (this.currentLogIndex < this.allSimulationLogs.length) {
-        this.visibleLogs.push(this.allSimulationLogs[this.currentLogIndex]);
-        this.getLoadedPages.push(this.getAllLoadedPages[this.currentLogIndex]);
+        this.loadedPages = this.allLoadedPages[this.currentLogIndex];
+        const eachLog = this.allSimulationLogs[this.currentLogIndex];
+        eachLog.forEach((page) => {
+          this.processIds.push(page[0]);
+          this.actualProcessId = page[0];
+          this.indexToColors.push(page[0]);
+          this.pointers.push(page[1].id);
+          this.actualPtr = page[1].id;
+          this.visibleLogs.push(page[2]);
+          page[2].forEach((p: Page, index) => {
+            if(p.isOnRam()){
+              this.ramColors[pageInRam] = this.getLoadedColor(page[0]);
+              pageInRam++;
+            }
+          })
+          if(this.actualPagingAlg instanceof RND || this.actualPagingAlg instanceof MRU){
+            this.actualFragmentation += page[1].getFragmentation() / 1024;
+          }else{
+            this.actualFragmentation += page[1].getFragmentation();
+          }
+        })
         this.actualTrashing = this.trashing[this.currentLogIndex];
         this.actualMemUsg = this.memUsg[this.currentLogIndex];
         this.actualClock = this.clock[this.currentLogIndex];
@@ -119,33 +234,7 @@ export class SimulationComponent implements OnInit, OnDestroy {
       } else {
         clearInterval(this.timer);
       }
-    }, 100);
-  }
-
-  // Método que llama al algoritmo seleccionado
-  callAlgorithm() {
-    switch (this.algorithm) {
-      case "MRU":
-        //this.allSimulationLogs = [this.service.getMRU()];  // Guardar todos los logs de MRU
-        break;
-      case "FIFO":
-        //this.allSimulationLogs = [this.service.getFIFO()];  // Guardar los logs de FIFO
-        break;
-      case "RND":
-        this.service.processLines(this.selectedFile!, 4);
-        this.allSimulationLogs = this.service.getRND();  // Guardar los logs de RND
-        this.getAllLoadedPages = this.service.getLoadedRND();
-        this.trashing = this.service.getTrashing();
-        this.memUsg = this.service.getMemUsg();
-        this.clock = this.service.getClock();
-        this.virtualMemUsg =  this.service.getVirtualMemUsg();
-        break;
-      default:
-        //this.allSimulationLogs = ["Algorithm not recognized"];
-        break;
-    }
-    this.precomputeColors();
-    this.startSimulation();  // Iniciar la simulación después de cargar los logs
+    }, 3000);
   }
 
   getLoadedColor(i: number): string {
@@ -153,10 +242,10 @@ export class SimulationComponent implements OnInit, OnDestroy {
   }
 
   precomputeColors() {
-    this.allSimulationLogs.forEach(log => {
+    for(let i=0;i<100;i++){
       const logColors: string = this.generateRandomColor();
       this.loadedColors.push(logColors);
-    });
+    }
     this.statsAlgColor = this.generateRandomColor();
     this.statsOptColor = this.generateRandomColorOpt();
   }
@@ -174,11 +263,24 @@ export class SimulationComponent implements OnInit, OnDestroy {
   }
 
   getLoadedColorOPT(index: number) {
-    if(this.loadedColorsOpt[index] == "white") {
+    if (this.loadedColorsOpt[index] == "white") {
       const saturation = Math.floor(Math.random() * 50) + 50;
       const lightness = Math.floor(Math.random() * 30) + 10;
       this.loadedColorsOpt[index] = `hsl(${200}, ${saturation}%, ${lightness}%)`;
     }
     return this.loadedColorsOpt[index];
+  }
+
+  getPagingAlg(name: string, seed: string): Fifo | SecondChance | MRU | RND | undefined{
+    if (name == "FIFO") {
+      return new Fifo();
+    } else if (name == "SC") {
+      return new SecondChance();
+    } else if (name == "MRU") {
+      return new MRU();
+    } else if (name == "RND") {
+      return new RND(seed);
+    }
+    return undefined;
   }
 }
