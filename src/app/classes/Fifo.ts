@@ -455,16 +455,4 @@ export class Fifo implements IMMU {
       }
     });
   }
-
-  getLoadedPages(): Page[] {
-    let loadedPages: Page [] =[];
-    for(const[key,values] of this.pointerPageMap){
-      for(const page of values){
-        if(this.fifoStaticPages.includes(page.getId())){
-          loadedPages.push(page);
-        }
-      }
-    }
-    return loadedPages;
-  }
 }

@@ -6,6 +6,7 @@ import { Page } from './classes/Page';
 import { Pointer } from './classes/Pointer';
 import { SecondChance } from './classes/SecondChance';
 import { cloneDeep } from 'lodash';
+import Rand from 'rand-seed';
 
 @Injectable({
   providedIn: 'root',
