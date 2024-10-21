@@ -2,6 +2,8 @@ import { IMMU } from './../interfaces/IMMU';
 import { Page } from './Page';
 import { Process } from './Process';
 import { Pointer } from './Pointer';
+import { cloneDeep } from 'lodash';
+
 type ProcesoTupla = [number, Pointer, Page[]];
 export class Fifo implements IMMU {
   RAM: number;
@@ -101,6 +103,7 @@ export class Fifo implements IMMU {
       
       let pagesCal :number=size/4096;
       let pagesArr:Page[]=[];
+      
       for(let i = 0;i<pagesNeeded;i++){
 
         
@@ -162,6 +165,8 @@ export class Fifo implements IMMU {
           this.clock +=5;
           this.trashing+=5;
           const exitID:number|undefined = this.fifoStaticPages.shift();
+          
+          
           const segmentReuse:number|null|undefined = this.swapingPages(exitID);
           
 
@@ -192,7 +197,6 @@ export class Fifo implements IMMU {
 
     process.addPointer(newPointer);
     this.pointerStack.push(newPointer);
-    
     return this.getProcesoTupla();
     //this.printProcesses();
 
@@ -251,7 +255,12 @@ export class Fifo implements IMMU {
 
   cUsePointer(pid:number):ProcesoTupla[] | undefined{
     const pages:Page[]=this.searchPagesbyPointerId(pid);
-    for(const page of pages){
+    
+
+    
+    for(let page of pages){
+
+      
       if(page.isOnRam()){
         this.clock+=1;
       }else{
@@ -276,6 +285,7 @@ export class Fifo implements IMMU {
 
       }
     }
+
     return this.getProcesoTupla();
 
   }   
@@ -335,8 +345,9 @@ export class Fifo implements IMMU {
  }
  swapingPages(pidExit:number|null|undefined):number|null|undefined{
     for(const[key,values] of this.pointerPageMap){
-      for(const value of values){
+      for(let value of values){
         if(value.getId()===pidExit){
+          
           
           //this.fifoVirtualPages.push(pidExit);
           this.currenVirtualMemUsage+=value.getmemoryUse()/1024;
@@ -344,12 +355,13 @@ export class Fifo implements IMMU {
           const segmentReturn:number|null|undefined= value.getSegmentDir();
           value.setSegmentDir(null);
           value.toggleRam();
-          console.log("Estado después de la modificación:", value);
+          
           this.recalculateFragmentation(key);
           return segmentReturn;
         }
       }
     }
+
     throw new Error('Pagin not in the map, is not posible make the swap');
 
  }
@@ -412,7 +424,7 @@ export class Fifo implements IMMU {
         }
       }
     }
-    console.log(loadedPages);
+   
     return loadedPages;
   }
 

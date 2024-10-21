@@ -179,6 +179,7 @@ export class SecondChance implements IMMU {
     process.addPointer(newPointer);
     this.pointerStack.push(newPointer);
     return this.getProcesoTupla();
+
     //this.printProcesses();
   }
   getProcesoTupla():ProcesoTupla[] | undefined {
