@@ -3,6 +3,7 @@ import { Page } from './Page';
 import { Process } from './Process';
 import { Pointer } from './Pointer';
 type ProcesoTupla = [number, Pointer, Page[]];
+
 export class SecondChance implements IMMU {
   RAM: number;
   pageSize: number;
@@ -52,6 +53,18 @@ export class SecondChance implements IMMU {
     } else {
       throw new Error('Process not found');
     }
+  }
+
+  getTrashing(): number {
+    return this.trashing;
+  }
+
+  getCurrentMemUsage(): number {
+    return this.currentMemUsage;
+  }
+
+  getCurrentVirtualMemUsage(): number {
+    return this.currenVirtualMemUsage;
   }
 
   getProcessByPointerId(id: number): Process {
@@ -183,10 +196,10 @@ export class SecondChance implements IMMU {
     //this.printProcesses();
   }
   getProcesoTupla():ProcesoTupla[] | undefined {
-        let logs:ProcesoTupla[] = []; 
-        
+        let logs:ProcesoTupla[] = [];
+
         for(const point of this.pointerStack){
-          
+
           const pages = this.searchPagesbyPointerId(point.getId());
           logs.push([this.getProcessByPointerId(point.getId()).getId(),point,pages]);
         }

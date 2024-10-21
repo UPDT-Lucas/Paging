@@ -2,25 +2,37 @@ import { Injectable } from '@angular/core';
 import { Fifo } from './classes/Fifo';
 import { MRU } from './classes/MRU';
 import { RND } from './classes/RND';
-import Rand from 'rand-seed';
 import { Page } from './classes/Page';
 import { Pointer } from './classes/Pointer';
 import { SecondChance } from './classes/SecondChance';
 import { cloneDeep } from 'lodash';
-
 
 @Injectable({
   providedIn: 'root',
 })
 export class PaginationService {
 
-  constructor() {
-    this.testReadFile();
-    type ProcesoTupla = [number, Pointer, Page[]];
+  rndLoaded: any [] = [];
+  trashing: number [] = [];
+  memUsg: number [] = [];
+  clock: number [] = [];
+  virtualMemUsg: number [] = [];
 
+  private selectedFile: File | null = null;
+
+  constructor() {
+    
+    type ProcesoTupla = [number, Pointer, Page[]];
   }
 
-  rndLoaded: any [] = [];
+
+  setFile(file: File | null) {
+    this.selectedFile = file;
+  }
+
+  getFile(): File | null {
+    return this.selectedFile;
+  }
 
   public getMRU(): void {
     const RNDP = new RND('seed');
@@ -36,17 +48,17 @@ export class PaginationService {
     const FIFO = new Fifo();
   }
 
-  public getRND(): Map<number, Page[]> [] {
+  public getRND(): Page[][]{
     const RNDP = new RND('seed');
-    let logs: Map<number, Page[]> [] = [];
-    /*for(let i=0;i<100;i++){
-      logs[i] = RNDP.cNewProcess(i, 4096)!;
-      console.log(logs[i]);
-      RNDP.getClock();
-      RNDP.getTrashing();
-      RNDP.getCurrentMemUsage();
-      this.rndLoaded[i] = RNDP.getLoadedPages();
-    }*/
+    let logs: Page [][]= [];
+    // for(let i=0;i<30;i++){
+    //   logs.push(RNDP.cNewProcess(i, 10000));
+    //   this.clock[i] =  RNDP.getClock();
+    //   this.trashing[i] = RNDP.getTrashing();
+    //   this.memUsg[i] =  RNDP.getCurrentMemUsage();
+    //   this.rndLoaded[i] = RNDP.getLoadedPages();
+    //   this.virtualMemUsg[i] = RNDP.getVirtualMemUsage();
+    // }
     return logs;
   }
 
@@ -54,9 +66,21 @@ export class PaginationService {
     return this.rndLoaded;
   }
 
-  public getSND(): void {
-    const FIFO = new Fifo();
+  public getTrashing(): number[] {
+    return this.trashing;
   }
+   public getVirtualMemUsg(): number[] {
+    return this.virtualMemUsg;
+  }
+
+  public getMemUsg(): number[] {
+    return this.memUsg;
+  }
+
+  public getClock(): number[] {
+    return this.clock;
+  }
+   
   public testReadFile(): void {
     const fileContent = `new(1,405504)\nnew(1,3000)\nuse(1)\nnew(1,3000)`;
     const simulatedFile = new File([fileContent], 'simulatedFile.txt', { type: 'text/plain' });
@@ -158,7 +182,6 @@ export class PaginationService {
     };
 
     reader.readAsText(file);
-
   }
  public getKeyByIndex(map: Map<number, number[]>, index: number): number | undefined {
     const keysArray = Array.from(map.keys());
@@ -252,7 +275,6 @@ public generateInstructions(seed: string, idPaging: number, processes: number, i
                 pointerCounter++;
             }
         }
-
         instructionsCounter++;
     }
     console.log(instructionsMap);
@@ -321,5 +343,8 @@ public generateInstructions(seed: string, idPaging: number, processes: number, i
 
   
 
+  public getSND(): void {
+    const FIFO = new Fifo();
+  }
 
 }

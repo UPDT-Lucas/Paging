@@ -31,6 +31,11 @@ export class Page {
     this.onRam = !this.onRam;
   }
 
+  changeRam(toChange: Page): Page {
+    toChange.toggleRam();
+    return toChange;
+  }
+
   toggleBit(): void {
     this.Bit = !this.Bit;
   }
@@ -46,7 +51,6 @@ export class Page {
     return this.segmentDir;
   }
   setSegmentDir(idSeg:number|undefined|null):void{
-
     this.segmentDir=idSeg;
   }
 }

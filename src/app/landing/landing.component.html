@@ -46,7 +46,7 @@
         File
       </h1>
       <div class="file-upload">
-        <input type="file" id="fileInput">
+        <input type="file" id="fileInput" (change)="onFileSelected($event)">
         <label for="fileInput" class="file-label">Load file</label>
       </div>
     </div>

@@ -16,9 +16,10 @@ export class RND implements IMMU {
   pointerPageMap: Map<Pointer, Page[]>;
   processes: Process[];
   loadedPages: Page[];
-  pointerStack:Pointer[];
+  pointerStack: Pointer[];
   availableAddresses: Map<number, boolean>;
   deadProcesses: number[];
+  removedPages: Page[] = [];
   seed: string;
   random: Rand;
 
@@ -35,7 +36,7 @@ export class RND implements IMMU {
     this.pointerConsecutive = 0;
     this.trashing = 0;
     this.processes = [];
-    this.pointerStack=[];
+    this.pointerStack = [];
     this.deadProcesses = [];
     this.loadedPages = [];
     this.pointerPageMap = new Map<Pointer, Page[]>();
@@ -48,12 +49,20 @@ export class RND implements IMMU {
     return this.clock;
   }
 
+  getProcesses(): Process[] {
+    return this.processes;
+  }
+
   getTrashing(): number {
     return this.trashing;
   }
 
   getCurrentMemUsage(): number {
     return this.currentMemUsage;
+  }
+
+  getCurrentVirtualMemUsage(): number {
+    return this.currenVirtualMemUsage;
   }
 
   getProcessByID(id: number): Process {
@@ -83,7 +92,7 @@ export class RND implements IMMU {
     return undefined;
   }
 
-  private selectRandomPage(toIgnore: number []): Page {
+  selectRandomPage(toIgnore: number[]): Page {
     const swappablePages: Page[] = this.loadedPages.filter((page) => !toIgnore.includes(page.getId()));
     const randomIndex = Math.floor(this.random.next() * swappablePages.length);
     return swappablePages[randomIndex];
@@ -101,36 +110,34 @@ export class RND implements IMMU {
     return newPointer;
   }
 
-  getProcesoTupla():ProcesoTupla[] | undefined {
-      let logs:ProcesoTupla[] = []; 
-      
-      for(const point of this.pointerStack){
-        
-        const pages = this.searchPagesbyPointerId(point.getId());
-        logs.push([this.getProcessByPointerId(point.getId()).getId(),point,pages]);
-      }
-      return logs;
+  getProcesoTupla(): ProcesoTupla[] | undefined {
+    let logs: ProcesoTupla[] = [];
+    for (const point of this.pointerStack) {
+      const pages = this.searchPagesbyPointerId(point.getId());
+      logs.push([this.getProcessByPointerId(point.getId()).getId(), point, pages]);
+    }
+    return logs;
   }
-  cNewProcess(pid: number, size: number): ProcesoTupla[]|undefined {
+
+  cNewProcess(pid: number, size: number): ProcesoTupla[] | undefined {
     const process = this.getOrCreateProcess(pid);
     const pagesArr: Page[] = this.allocatePages(size);
     const newPointer = this.mapPagesToPointer(pagesArr);
     this.pointerPageMap.set(newPointer, pagesArr);
     process.addPointer(newPointer);
-    console.log(this.processes);
     this.pointerStack.push(newPointer);
-    
-    
     return this.getProcesoTupla();
   }
-   searchPagesbyPointerId(pi:number):Page[] {
-    for(const[key,value] of this.pointerPageMap){
-      if(key.getId()===pi){
+
+  searchPagesbyPointerId(pi: number): Page[] {
+    for (const [key, value] of this.pointerPageMap) {
+      if (key.getId() === pi) {
         return value;
       }
     }
     throw new Error('There is not a pointer with this id so there no exist pages for return');
   }
+
   getOrCreateProcess(pid: number): Process {
     if (this.isExistingProces(pid)) {
       return this.getProcessByID(pid);
@@ -144,25 +151,22 @@ export class RND implements IMMU {
   allocatePages(size: number): Page[] {
     const pagesNeeded: number = Math.ceil(size / 4096);
     let toIgnore: number[] = [];
-    for(let i = 0;i<pagesNeeded;i++){
+    for (let i = 0; i < pagesNeeded; i++) {
       toIgnore[i] = this.pageConsecutive + i;
     }
     let remainingSpace: number = size;
     let pageSpace: number = 0;
     let pagesArr: Page[] = [];
     for (let i = 0; i < pagesNeeded; i++) {
+      if (remainingSpace > 4096) {
+        pageSpace = 4096;
+      } else {
+        pageSpace = remainingSpace;
+      }
       if (this.currentMemUsage >= this.RAM) {
-        if(remainingSpace > 4096){
-          pageSpace = 4096;
-        }else{
-          pageSpace = remainingSpace;
-        }
         pagesArr.push(this.swapAndCreatePage(pageSpace, toIgnore));
       } else {
-        pagesArr.push(this.createNewPage(size));
-      }
-      if(remainingSpace < 4096){
-        this.trashing += remainingSpace;
+        pagesArr.push(this.createNewPage(pageSpace));
       }
       remainingSpace -= 4096;
     }
@@ -171,7 +175,7 @@ export class RND implements IMMU {
 
   swapAndCreatePage(size: number, toIgnorePages: number[]): Page {
     this.clock += 5;
-    this.trashing+=5;
+    this.trashing += 5;
     const segmentReuse: number = this.swapingPages(toIgnorePages);
     const newPage: Page = new Page(this.pageConsecutive++, true, true, segmentReuse, size);
     this.loadedPages.push(newPage);
@@ -193,14 +197,14 @@ export class RND implements IMMU {
     return newPointer;
   }
 
-  cUsePointer(pointerId: number): ProcesoTupla[]|undefined {
+  cUsePointer(pointerId: number): ProcesoTupla[] | undefined {
     const pointer = this.getPointerById(pointerId);
     const pages = this.pointerPageMap.get(pointer!);
     if (!pages) {
       throw new Error('Pointer not found in the map');
     }
     let rndPages: Page[] = [];
-    
+
     const pagesOnRam: Page[] = pages.filter((page) => page.isOnRam());
     pagesOnRam.forEach((page) => {
       const pageLoadedIndex = this.loadedPages.findIndex((loadedPage) => loadedPage.getId() === page.getId());
@@ -216,17 +220,23 @@ export class RND implements IMMU {
         page.setSegmentDir(frame);
       } else {
         page.setSegmentDir(frame);
-        this.currentMemUsage += page.getmemoryUse() / 1024;
+        this.currentMemUsage += 4;
       }
       page.toggleRam();
       pagesOnRam.push(page);
       rndPages.push(page);
+
+      this.currenVirtualMemUsage -= page.getmemoryUse() / 1024;
+      if(this.currenVirtualMemUsage < 0){
+        this.currenVirtualMemUsage = 0;
+      }
+
     });
     this.loadedPages.push(...rndPages);
     this.clock += pagesNotOnRam.length * 5;
-    this.trashing +=pagesNotOnRam.length * 5;
+    this.trashing += pagesNotOnRam.length * 5;
     this.clock += pagesOnRam.length * 1;
-    
+
 
     return this.getProcesoTupla();
   }
@@ -243,7 +253,7 @@ export class RND implements IMMU {
   }
 
 
-  cKillProcess(pid: number): ProcesoTupla[]|undefined {
+  cKillProcess(pid: number): ProcesoTupla[] | undefined {
     const process = this.getProcessByID(pid);
     const pointers = process.getPointers();
     pointers.forEach((pointer) => {
@@ -254,7 +264,7 @@ export class RND implements IMMU {
     return this.getProcesoTupla();
   }
 
-  cDeleteProcess(ptrId: number): ProcesoTupla[]|undefined {
+  cDeleteProcess(ptrId: number): ProcesoTupla[] | undefined {
     const pointer = this.getPointerById(ptrId);
     if (!pointer) {
       throw new Error('Pointer not found');
@@ -270,17 +280,21 @@ export class RND implements IMMU {
     const ptr = this.getPointerById(ptrId)!
     process.removePointer(ptr);
     this.pointerPageMap.delete(pointer);
-    this.pointerStack=this.pointerStack.filter(obj => obj.getId() !== pointer.getId());
+    this.pointerStack = this.pointerStack.filter(obj => obj.getId() !== pointer.getId());
 
     return this.getProcesoTupla();
   }
 
   freePage(page: Page): void {
     if (this.loadedPages.includes(page)) {
-      this.currentMemUsage -= page.getmemoryUse() / 1024;
       const pageLoadedIndex = this.loadedPages.find((loadedPage) => loadedPage === page);
       this.loadedPages = this.loadedPages.filter((page) => page !== pageLoadedIndex);
       this.availableAddresses.set(page.getSegmentDir()!, true);
+      this.currentMemUsage -= 4;
+      this.currenVirtualMemUsage -= page.getmemoryUse() / 1024;
+      if(this.currenVirtualMemUsage < 0){
+        this.currenVirtualMemUsage = 0;
+      }
     }
   }
 
@@ -303,13 +317,16 @@ export class RND implements IMMU {
   swapingPages(toIgnore: number[]): number {
     let toRemove: Page;
     toRemove = this.selectRandomPage(toIgnore);
+    this.removedPages.push(toRemove)
+    console.log(toRemove)
+
     for (const [key, values] of this.pointerPageMap) {
       for (const value of values) {
         if (value === toRemove) {
           this.currenVirtualMemUsage += value.getmemoryUse() / 1024;
-          const segmentReturn: number = value.getSegmentDir()!;
-          value.setSegmentDir(undefined);
+          let segmentReturn: number = value.getSegmentDir()!;
           value.toggleRam();
+          value.setSegmentDir(undefined);
           this.recalculateFragmentation(key);
           this.loadedPages = this.loadedPages.filter((page) => page.getId() !== value.getId());
           return segmentReturn;
@@ -334,9 +351,7 @@ export class RND implements IMMU {
   private calculatePageFragmentation(pages: Page[]): number {
     let fragmentation: number = 0;
     pages.forEach((page) => {
-      if(page.getmemoryUse() != 4096){
-        fragmentation += page.getmemoryUse();
-      }
+      fragmentation += 4096 - page.getmemoryUse();
     });
     return fragmentation;
   }
