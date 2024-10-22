@@ -5,6 +5,7 @@ import { RND } from './classes/RND';
 import { Page } from './classes/Page';
 import { Pointer } from './classes/Pointer';
 import { SecondChance } from './classes/SecondChance';
+import { OPT } from './classes/OPT';
 import { cloneDeep } from 'lodash';
 import Rand from 'rand-seed';
 
@@ -14,6 +15,7 @@ import Rand from 'rand-seed';
 export class PaginationService {
 
   rndLoaded: any [] = [];
+  optLoaded: any[]=[];
   trashing: number [] = [];
   memUsg: number [] = [];
   clock: number [] = [];
@@ -24,6 +26,7 @@ export class PaginationService {
   constructor() {
     
     type ProcesoTupla = [number, Pointer, Page[]];
+    this.testReadFile();
   }
 
 
@@ -83,10 +86,10 @@ export class PaginationService {
   }
    
   public testReadFile(): void {
-    const fileContent = `new(1,405504)\nnew(1,3000)\nuse(1)\nnew(1,3000)`;
+    const fileContent = `new(1,1000)\nnew(1,1000)\nnew(2,204800)\nnew(2,204800)\nuse(3)\nuse(2)\nnew(2,500)\nuse(3)\nuse(1)\new(2,204800)\n`;
     const simulatedFile = new File([fileContent], 'simulatedFile.txt', { type: 'text/plain' });
 
-    this.generateInstructions("123",1,10,250);
+    this.processLines(simulatedFile,1,"123");
   }
   public getPaginAlgorithm(idPaging:number,seed:string):Fifo|SecondChance|MRU|RND|undefined{
     if(idPaging===1){
@@ -153,6 +156,10 @@ export class PaginationService {
       let indexlog =0;
       let indexcLoaded=0;
       let logs: ProcesoTupla[][] = [];
+      let optLogs: ProcesoTupla[][]=[];
+      let optAlgorithm:OPT = new OPT(usesStack);
+      console.log(usesStack);
+
       instructionsMap.forEach(([id, value]) => {
     if (paginAlgorithm !== undefined) {
         // Usar una variable local para capturar el resultado
@@ -160,17 +167,29 @@ export class PaginationService {
 
         resultado = this.generateData(id,value,paginAlgorithm)
         const deepCopiedResult = cloneDeep(resultado);
-          logs.push(deepCopiedResult!);
+        logs.push(deepCopiedResult!);
+
+        let optResult;
+        optResult = this.generateData(id,value,optAlgorithm);
+        const deepCopiedResultOpt = cloneDeep(optResult);
+        optLogs.push(deepCopiedResultOpt!);
 
         // Guardar el estado actual después de la operación
         this.rndLoaded.push(cloneDeep(paginAlgorithm.getLoadedPages()));
+        this.optLoaded.push(cloneDeep(optAlgorithm.getLoadedPages()));
     }
    });
 
       if(paginAlgorithm!==undefined){
+        console.log("Datoa algoritmo seleccionado");
         console.log(paginAlgorithm.printProcesses());
         console.log(logs);
         console.log(this.rndLoaded);
+
+        console.log("Datoa algoritmo optimo");
+        console.log(optAlgorithm.printProcesses());
+        console.log(optLogs);
+        console.log(this.optLoaded);
 
       }
 
@@ -218,7 +237,7 @@ public generateInstructions(seed: string, idPaging: number, processes: number, i
     let pointerList: number[] = [];
     let processesCreated: number[]=[];
     let processList: Map<number, number[]> = new Map<number, number[]>();
-    let pointerFuture: number[] = [];
+    let usesStack:number[] = [];
     let pointerCounter = 1;
 
     for (let i = 0; i < processes; i++) {
@@ -260,7 +279,7 @@ public generateInstructions(seed: string, idPaging: number, processes: number, i
             pID = Math.floor(generator.next() * pointerList.length);
             instructionsMap.push([1, [pointerList[pID]]]);
             // Reemplaza esto por la lógica apropiada para pointerFuture si es necesario
-            pointerFuture.push(pointerList[pID]);
+            usesStack.push(pointerList[pID]);
 
         } else { // 50% de probabilidad
             pID = Math.floor(generator.next() * processList.size);
@@ -271,7 +290,6 @@ public generateInstructions(seed: string, idPaging: number, processes: number, i
                 this.addValueToMap(processList, keyToCreate, pointerCounter);
                 pointerList.push(pointerCounter);
                 // Reemplaza esto por la lógica apropiada para pointerFuture si es necesario
-                pointerFuture.push(pointerCounter);
                 processesCreated.push(keyToCreate);
                 pointerCounter++;
             }
@@ -307,7 +325,7 @@ public generateInstructions(seed: string, idPaging: number, processes: number, i
 
 
   public generateData(id:number,values:string[],paginAlgorithm :Fifo|SecondChance|
-    MRU|RND){
+    MRU|RND|OPT){
         
         if (id === 1) {
             return paginAlgorithm.cUsePointer(Number(values[0]))!;
@@ -322,7 +340,7 @@ public generateInstructions(seed: string, idPaging: number, processes: number, i
         return undefined
   }
   public generateDataNum(id:number,values:number[],paginAlgorithm :Fifo|SecondChance|
-    MRU|RND){
+    MRU|RND|OPT){
         
         if (id === 1) {
             console.log("Use( ",values[0]);

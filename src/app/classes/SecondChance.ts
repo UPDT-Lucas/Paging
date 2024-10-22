@@ -223,7 +223,6 @@ export class SecondChance implements IMMU {
          }
         }
          index++;
-
       }
       throw new Error('There is not an id for the SecondChance process');
     }else{
