@@ -8,6 +8,7 @@ import { SecondChance } from '../classes/SecondChance';
 import { MRU } from '../classes/MRU';
 import { RND } from '../classes/RND';
 import { cloneDeep } from 'lodash';
+import Rand from 'rand-seed';
 
 @Component({
   selector: 'app-simulation',
@@ -39,7 +40,7 @@ export class SimulationComponent implements OnInit, OnDestroy {
   loadedColors: string[] = [];
   loadedColorsOpt: string[] = [];
 
-  loadedPages: Page [] = [];
+  loadedPages: Page[] = [];
   allLoadedPages: Page[][] = [];
 
   actualPtr: number = 0;
@@ -81,7 +82,7 @@ export class SimulationComponent implements OnInit, OnDestroy {
       if (this.selectedFile instanceof File) {
         this.readFile(this.selectedFile);
       } else {
-        console.error('selectedFile is not a valid File object:', this.selectedFile);
+        this.generateInstructions();
       }
     });
   }
@@ -154,35 +155,35 @@ export class SimulationComponent implements OnInit, OnDestroy {
       });
 
     }
+    this.getResults();
+    this.precomputeColors();
+  }
+
+  public getResults() {
     this.instructionsMap.forEach(([id, value]) => {
-
-      // resultado = this.generateData(id,value,paginAlgorithm)
-      // const deepCopiedResult = cloneDeep(resultado);
-      // logs.push(deepCopiedResult!);
-
-      if(this.actualPagingAlg!==undefined){
-        if(id===1){
+      if (this.actualPagingAlg !== undefined) {
+        if (id === 1) {
           this.allSimulationLogs.push(cloneDeep(this.actualPagingAlg.cUsePointer(Number(value[0]))!));
           this.allLoadedPages.push(cloneDeep(this.actualPagingAlg.getLoadedPages()));
           this.memUsg.push(cloneDeep(this.actualPagingAlg.getCurrentMemUsage()));
           this.clock.push(cloneDeep(this.actualPagingAlg.getClock()));
           this.trashing.push(cloneDeep(this.actualPagingAlg.getTrashing()));
           this.virtualMemUsg.push(cloneDeep(this.actualPagingAlg.getCurrentVirtualMemUsage()));
-        }else if(id===2){
-          this.allSimulationLogs.push(cloneDeep(this.actualPagingAlg.cNewProcess(Number(value[0]),Number(value[1]))!));
+        } else if (id === 2) {
+          this.allSimulationLogs.push(cloneDeep(this.actualPagingAlg.cNewProcess(Number(value[0]), Number(value[1]))!));
           this.allLoadedPages.push(cloneDeep(this.actualPagingAlg.getLoadedPages()));
           this.memUsg.push(cloneDeep(this.actualPagingAlg.getCurrentMemUsage()));
           this.clock.push(cloneDeep(this.actualPagingAlg.getClock()));
           this.trashing.push(cloneDeep(this.actualPagingAlg.getTrashing()));
           this.virtualMemUsg.push(cloneDeep(this.actualPagingAlg.getCurrentVirtualMemUsage()));
-        }else if(id===3){
+        } else if (id === 3) {
           this.allSimulationLogs.push(cloneDeep(this.actualPagingAlg.cDeleteProcess(Number(value[0]))!));
           this.allLoadedPages.push(cloneDeep(this.actualPagingAlg.getLoadedPages()));
           this.memUsg.push(cloneDeep(this.actualPagingAlg.getCurrentMemUsage()));
           this.clock.push(cloneDeep(this.actualPagingAlg.getClock()));
           this.trashing.push(cloneDeep(this.actualPagingAlg.getTrashing()));
           this.virtualMemUsg.push(cloneDeep(this.actualPagingAlg.getCurrentVirtualMemUsage()));
-        }else if(id===4){
+        } else if (id === 4) {
           this.allSimulationLogs.push(cloneDeep(this.actualPagingAlg.cKillProcess(Number(value[0]))!));
           this.allLoadedPages.push(cloneDeep(this.actualPagingAlg.getLoadedPages()));
           this.memUsg.push(cloneDeep(this.actualPagingAlg.getCurrentMemUsage()));
@@ -192,8 +193,103 @@ export class SimulationComponent implements OnInit, OnDestroy {
         }
       }
     });
+  }
+
+  public generateInstructions(): void {
+    this.actualPagingAlg = this.getPagingAlg(this.algorithm, this.seed);
+    const generator = new Rand(this.seed);
+    let instructionsCounter = 0;
+    let pointerList: number[] = [];
+    let processesCreated: number[] = [];
+    let processList: Map<number, number[]> = new Map<number, number[]>();
+    let pointerFuture: number[] = [];
+    let pointerCounter = 1;
+
+    for (let i = 0; i < parseInt(this.processes); i++) {
+      processList.set(i, []);
+    }
+
+    while (instructionsCounter < parseInt(this.operations)) {
+      let instructionNumber = Math.floor(generator.next() * 100);
+      let pID: number;
+      let value: number;
+
+      if (instructionNumber < 1 && processesCreated.length !== 0) { // 5% de probabilidad
+        let keyToDelete: number | undefined;
+
+        // Generar un ID aleatorio y validar que tenga elementos en su lista
+        do {
+          pID = Math.floor(generator.next() * processList.size);
+          keyToDelete = this.getKeyByIndex(processList, pID);
+        } while (keyToDelete === undefined || (processList.get(keyToDelete)?.length === 0));
+
+        // Una vez que tenemos un keyToDelete válido
+        if (keyToDelete !== undefined) {
+          this.instructionsMap.push([4, [keyToDelete + ""]]);
+
+          for (const point of processList.get(keyToDelete) || []) {
+            pointerList = pointerList.filter(num => num !== point);
+          }
+          processesCreated = processesCreated.filter(num => num !== keyToDelete);
+          processList.delete(keyToDelete);
+        }
+
+      } else if (instructionNumber < 3 && pointerList.length !== 0) { // 10% de probabilidad
+        pID = Math.floor(generator.next() * pointerList.length);
+        this.instructionsMap.push([3, [pointerList[pID] + ""]]);
+        this.removeValueFromMap(processList, pointerList[pID]);
+        pointerList = pointerList.filter(num => num !== pointerList[pID]);
+
+      } else if (instructionNumber < 50 && pointerList.length !== 0) { // 35% de probabilidad
+        pID = Math.floor(generator.next() * pointerList.length);
+        this.instructionsMap.push([1, [pointerList[pID] + ""]]);
+        // Reemplaza esto por la lógica apropiada para pointerFuture si es necesario
+        pointerFuture.push(pointerList[pID]);
+
+      } else { // 50% de probabilidad
+        pID = Math.floor(generator.next() * processList.size);
+        let keyToCreate = this.getKeyByIndex(processList, pID);
+        if (keyToCreate !== undefined) {
+          value = Math.floor(generator.next() * 12288);
+          this.instructionsMap.push([2, [keyToCreate + "", value + ""]]);
+          this.addValueToMap(processList, keyToCreate, pointerCounter);
+          pointerList.push(pointerCounter);
+          // Reemplaza esto por la lógica apropiada para pointerFuture si es necesario
+          pointerFuture.push(pointerCounter);
+          processesCreated.push(keyToCreate);
+          pointerCounter++;
+        }
+      }
+      instructionsCounter++;
+    }
+    this.getResults();
     this.precomputeColors();
   }
+
+  public getKeyByIndex(map: Map<number, number[]>, index: number): number | undefined {
+    const keysArray = Array.from(map.keys());
+    return index >= 0 && index < keysArray.length ? keysArray[index] : undefined;
+  }
+
+  public addValueToMap(map: Map<number, number[]>, key: number, value: number): void {
+    if (map.has(key)) {
+      map.get(key)?.push(value);
+    } else {
+      map.set(key, [value]);
+    }
+  }
+
+  public removeValueFromMap(map: Map<number, number[]>, targetValue: number): void {
+    for (const [key, valuesArray] of map.entries()) {
+      const index = valuesArray.indexOf(targetValue);
+      if (index !== -1) {
+        valuesArray.splice(index, 1);
+        map.set(key, valuesArray);
+        break;
+      }
+    }
+  }
+
 
   startSimulation() {
     this.timer = setInterval(() => {
@@ -215,14 +311,14 @@ export class SimulationComponent implements OnInit, OnDestroy {
           this.actualPtr = page[1].id;
           this.visibleLogs.push(page[2]);
           page[2].forEach((p: Page, index) => {
-            if(p.isOnRam()){
+            if (p.isOnRam()) {
               this.ramColors[pageInRam] = this.getLoadedColor(page[0]);
               pageInRam++;
             }
           })
-          if(this.actualPagingAlg instanceof RND || this.actualPagingAlg instanceof MRU){
+          if (this.actualPagingAlg instanceof RND || this.actualPagingAlg instanceof MRU) {
             this.actualFragmentation += page[1].getFragmentation() / 1024;
-          }else{
+          } else {
             this.actualFragmentation += page[1].getFragmentation();
           }
         })
@@ -234,7 +330,7 @@ export class SimulationComponent implements OnInit, OnDestroy {
       } else {
         clearInterval(this.timer);
       }
-    }, 3000);
+    }, 1000);
   }
 
   getLoadedColor(i: number): string {
@@ -242,7 +338,7 @@ export class SimulationComponent implements OnInit, OnDestroy {
   }
 
   precomputeColors() {
-    for(let i=0;i<100;i++){
+    for (let i = 0; i < 100; i++) {
       const logColors: string = this.generateRandomColor();
       this.loadedColors.push(logColors);
     }
@@ -271,10 +367,11 @@ export class SimulationComponent implements OnInit, OnDestroy {
     return this.loadedColorsOpt[index];
   }
 
-  getPagingAlg(name: string, seed: string): Fifo | SecondChance | MRU | RND | undefined{
+  getPagingAlg(name: string, seed: string): Fifo | SecondChance | MRU | RND | undefined {
     if (name == "FIFO") {
       return new Fifo();
     } else if (name == "SC") {
+      console.log("Entra xd")
       return new SecondChance();
     } else if (name == "MRU") {
       return new MRU();

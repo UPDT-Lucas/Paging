@@ -205,6 +205,7 @@ export class SecondChance implements IMMU {
         }
         return logs;
   }
+
   getIdSecondChance(pages:Page[]|null):number|undefined{
     let index:number =0;
     if(pages!==null){
@@ -238,8 +239,6 @@ export class SecondChance implements IMMU {
       }
       throw new Error('There is not an id for the SecondChance process');
     }
-
-
   }
 
   cKillProcess(pid:number): ProcesoTupla[] | undefined  {
