@@ -244,6 +244,7 @@ export class RND implements IMMU {
   replacePageUse(pages: Page[]): number {
     const loadedReverse = this.loadedPages.reverse();
     const pageToRemove = loadedReverse.find((page) => !pages.includes(page));
+    this.currenVirtualMemUsage += pageToRemove!.getmemoryUse() / 1024;
     if (pageToRemove) {
       this.loadedPages = this.loadedPages.filter((page) => page !== pageToRemove);
       pageToRemove.toggleRam();
@@ -318,13 +319,11 @@ export class RND implements IMMU {
     let toRemove: Page;
     toRemove = this.selectRandomPage(toIgnore);
     this.removedPages.push(toRemove)
-    console.log(toRemove)
-
     for (const [key, values] of this.pointerPageMap) {
       for (const value of values) {
         if (value === toRemove) {
-          this.currenVirtualMemUsage += value.getmemoryUse() / 1024;
           let segmentReturn: number = value.getSegmentDir()!;
+          this.currenVirtualMemUsage += value.getmemoryUse() / 1024;
           value.toggleRam();
           value.setSegmentDir(undefined);
           this.recalculateFragmentation(key);

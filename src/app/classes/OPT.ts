@@ -2,9 +2,9 @@ import { IMMU } from './../interfaces/IMMU';
 import { Page } from './Page';
 import { Process } from './Process';
 import { Pointer } from './Pointer';
+import { cloneDeep } from 'lodash';
 type ProcesoTupla = [number, Pointer, Page[]];
-
-export class SecondChance implements IMMU {
+export class OPT implements IMMU {
   RAM: number;
   pageSize: number;
   currentMemUsage: number;
@@ -21,8 +21,10 @@ export class SecondChance implements IMMU {
   //fifoVirtualPages: number[];
   availableAddresses: Map<number|null|undefined,boolean>;
   deadProcesses:number[];
+  futureList:number[];
+  futureIndex:number;
 
-  constructor() {
+  constructor(futureList:number[]) {
     this.RAM = 400;
     this.pageSize = 4;
     this.availableAddresses = new Map<number|null|undefined,boolean>();
@@ -32,6 +34,9 @@ export class SecondChance implements IMMU {
     this.pageConsecutive = 0;
     this.pointerConsecutive = 0;
     this.trashing=0;
+
+    this.futureList=futureList;
+    this.futureIndex =0;
 
     this.processes = [];
     this.fifoQueue = [];
@@ -87,12 +92,29 @@ export class SecondChance implements IMMU {
     const newPointer: Pointer = new Pointer(this.pointerConsecutive, frag);
     return newPointer;
   }
+  addPageToPointer(idPointer: number, page: Page): void {
+    let searchPointer: Pointer | undefined;
+    this.pointerPageMap.forEach((value, key) => {
+        if (key.getId() === idPointer) {
+            searchPointer = key;
+        }
+    });
+    if (searchPointer) {
+        const pages = this.pointerPageMap.get(searchPointer);
+        if (pages) {
+            pages.push(page);
+        } else {
+            this.pointerPageMap.set(searchPointer, [page]);
+        }
+    } else {
+        console.error(`Pointer with ID ${idPointer} not found.`);
+    }
+}
 
   cNewProcess(pid: number, size: number): ProcesoTupla[] | undefined  {
     //bytesSize = size / 1000;
     //const exactPages = Math.ceil(kb / this.pageSize);
     var process: Process;
-
     if (this.isExistingProces(pid)) {
       process = this.getProcessByID(pid);
     } else if(this.deadProcesses.includes(pid)){
@@ -102,6 +124,8 @@ export class SecondChance implements IMMU {
     }
 
     let newPointer:Pointer;
+    newPointer = this.createPointer(this.calculateFragmentation(null));
+    this.pointerPageMap.set(newPointer,[]);
     if(size>4096){
 
       const pagesNeeded :number =  Math.ceil(size/4096);
@@ -128,7 +152,7 @@ export class SecondChance implements IMMU {
 
 
           this.pageConsecutive++;
-          pagesArr.push(newPage);
+          this.addPageToPointer(newPointer.getId(),newPage);
           this.fifoStaticPages.push(newPage);
 
         }else{
@@ -147,13 +171,12 @@ export class SecondChance implements IMMU {
           const newPage:Page = new Page(this.pageConsecutive,true,false,freeSegment,bytesDif);
           this.pageConsecutive++;
           this.fifoStaticPages.push(newPage);
-          pagesArr.push(newPage);
+          this.addPageToPointer(newPointer.getId(),newPage);
         }
 
       }
 
-      newPointer = this.createPointer(this.calculateFragmentation(pagesArr));
-      this.pointerPageMap.set(newPointer,pagesArr);
+      this.recalculateFragmentation(newPointer);
 
     }else{
 
@@ -170,7 +193,7 @@ export class SecondChance implements IMMU {
 
           this.pageConsecutive++;
           this.fifoStaticPages.push(newPage);
-          pagesArr.push(newPage);
+          this.addPageToPointer(newPointer.getId(),newPage);
 
         }else{
           this.currentMemUsage+=4;
@@ -182,10 +205,9 @@ export class SecondChance implements IMMU {
           const newPage:Page = new Page(this.pageConsecutive,true,false,freeSegment,size);
           this.pageConsecutive++;
           this.fifoStaticPages.push(newPage);
-          pagesArr.push(newPage);
+          this.addPageToPointer(newPointer.getId(),newPage);
         }
-        newPointer = this.createPointer(this.calculateFragmentation(pagesArr));
-        this.pointerPageMap.set(newPointer,pagesArr);
+        this.recalculateFragmentation(newPointer);
 
 
     }
@@ -196,51 +218,80 @@ export class SecondChance implements IMMU {
     //this.printProcesses();
   }
   getProcesoTupla():ProcesoTupla[] | undefined {
-        let logs:ProcesoTupla[] = [];
+    let logs:ProcesoTupla[] = [];
 
-        for(const point of this.pointerStack){
+    for(const point of this.pointerStack){
 
-          const pages = this.searchPagesbyPointerId(point.getId());
-          logs.push([this.getProcessByPointerId(point.getId()).getId(),point,pages]);
+      const pages = this.searchPagesbyPointerId(point.getId());
+      logs.push([this.getProcessByPointerId(point.getId()).getId(),this.searchPointerByPointerId(point.getId()),pages]);
+    }
+    return logs;
+}
+
+  getPointerIdByPageId(pid:number):number{
+
+
+    for(const [key,values] of this.pointerPageMap){
+      for(const value of values){
+        if(value.getId() === pid){
+          return key.getId();
         }
-        return logs;
+      }
+    }
+    throw new Error('Process not found');
   }
+
   getIdSecondChance(pages:Page[]|null):number|undefined{
-    let index:number =0;
+
+    let pagesForChange:Page[];
+
     if(pages!==null){
 
-      for(const page of this.fifoStaticPages){
-        if(pages.some(objeto => objeto.getId() === page.getId())){
-          if(page.getBit()===false){
-            page.toggleBit();
-          }
-        }else{
-         if(page.getBit()===false){
-            this.fifoStaticPages.splice(index,1);
-            return page.getId();
-         }else{
-            page.toggleBit();
-         }
-        }
-
-         index++;
-      }
-      return this.fifoStaticPages.shift()!.getId();
-      throw new Error('There is not an id for the SecondChance process');
+      pagesForChange =  this.fifoStaticPages.filter((page) => !pages.some(otherPage => otherPage.getId() === page.getId()));
     }else{
-      for(const page of this.fifoStaticPages){
-         if(page.getBit()===false){
-            this.fifoStaticPages.splice(index,1);
-            return page.getId();
-         }else{
-            page.toggleBit();
-         }
-         index++;
-      }
-      return this.fifoStaticPages.shift()!.getId();
-      throw new Error('There is not an id for the SecondChance process');
+
+      pagesForChange = this.fifoStaticPages;
+    }
+    let pageIdPerPointer:[number,number][]=[];
+
+    for(const page of pagesForChange){
+      pageIdPerPointer.push([page.getId(),this.getPointerIdByPageId(page.getId())]);
     }
 
+    let pageApp:[number|null,number][] = [];
+    let appearsPages:number[]=[];
+    let copiedArray = cloneDeep(this.futureList.slice());
+    copiedArray.splice(0,this.futureIndex);
+    for(const [pageId,pointerId] of pageIdPerPointer){
+      if(!appearsPages.includes(pointerId)){
+        appearsPages.push(pointerId);
+        if(copiedArray.includes(pointerId)){
+
+            pageApp.push([copiedArray.indexOf(pointerId),pointerId]);
+
+        }else{
+
+            pageApp.push([null,pointerId]);
+
+        }
+      }
+    }
+    pageApp.sort((a, b) => {
+
+        if (a[0] === null) return -1;
+
+        if (b[0] === null) return 1;
+
+        return (b[0] as number) - (a[0] as number);
+    });
+    for(const[pageId,pointerId] of pageIdPerPointer){
+        if(pointerId === pageApp[0][1]){
+            this.fifoStaticPages = this.fifoStaticPages.filter(item => item.getId() !== pageId);
+            return pageId;
+        }
+
+    }
+    throw new Error('There is no page to change to the future');
 
   }
 
@@ -286,13 +337,11 @@ export class SecondChance implements IMMU {
   }
 
   cUsePointer(pid:number){
+    this.futureIndex++;
     const pages:Page[]=this.searchPagesbyPointerId(pid);
     for(const page of pages){
       if(page.isOnRam()){
         this.clock+=1;
-        if(page.getBit()===false){
-          page.toggleBit();
-        }
 
       }else{
         this.clock+=5;
@@ -300,6 +349,7 @@ export class SecondChance implements IMMU {
         this.currenVirtualMemUsage-=page.getmemoryUse()/1024;
         if(this.currentMemUsage>=400){
           const exitID:number|undefined = this.getIdSecondChance(pages);
+
           const segmentReuse:number|null|undefined = this.swapingPages(exitID);
           page.toggleRam();
           page.toggleBit();
@@ -313,14 +363,9 @@ export class SecondChance implements IMMU {
         this.fifoStaticPages.push(page);
         const point:Pointer = this.searchPointerByPointerId(pid);
         this.recalculateFragmentation(point);
-
-
-
       }
     }
     return this.getProcesoTupla();
-
-
   }
 
   DeletePointerbyPointerId(pi:number):boolean{
@@ -393,11 +438,13 @@ export class SecondChance implements IMMU {
     throw new Error('Pagin not in the map, is not posible make the swap');
 
  }
- calculateFragmentation(pages:Page[]):number{
+ calculateFragmentation(pages:Page[]|null):number{
     let addFrag:number=0;
-    pages.forEach((page)=>{
-      addFrag+=4-page.getmemoryUse()/1024;
-    });
+    if(pages !== null){
+      pages.forEach((page)=>{
+        addFrag+=4-page.getmemoryUse()/1024;
+      });
+    }
     return addFrag;
 
  }

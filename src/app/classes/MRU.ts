@@ -162,7 +162,6 @@ export class MRU implements IMMU {
       if (this.currentMemUsage >= this.RAM) {
         pagesArr.push(this.swapAndCreatePage(pageSpace, toIgnoreIndexes));
       } else {
-        console.log("size", pageSpace);
         pagesArr.push(this.createNewPage(pageSpace));
       }
       remainingSpace -= 4096;
@@ -249,6 +248,7 @@ export class MRU implements IMMU {
   replacePageUse(pages: Page[]): number {
     const loadedReverse = this.loadedPages.reverse();
     const pageToRemove = loadedReverse.find((page) => !pages.includes(page));
+    this.currenVirtualMemUsage += pageToRemove!.getmemoryUse() / 1024;
     if (pageToRemove) {
       this.loadedPages = this.loadedPages.filter((page) => page !== pageToRemove);
       pageToRemove.toggleRam();
@@ -356,10 +356,8 @@ export class MRU implements IMMU {
   calculatePageFragmentation(pages: Page[]): number {
     let fragmentation: number = 0;
     pages.forEach((page) => {
-      console.log(page.getmemoryUse());
       fragmentation += 4096 - page.getmemoryUse();
     });
-    console.log(fragmentation)
     return fragmentation;
   }
 

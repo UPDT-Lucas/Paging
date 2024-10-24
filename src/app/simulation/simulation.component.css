@@ -33,10 +33,15 @@
 
 .clock-container{
   display: flex;
+  gap: 32px;
   p {
     align-self: flex-end;
     margin-right: 24px;
   }
+}
+
+.each-clock {
+  display: flex;
 }
 
 .alg {
