@@ -2,7 +2,11 @@
   <div class="main-content">
 
     <div class="options">
-      <img src="../../assets/icons8-start-60.png" alt="" (click)="startSimulation()">
+      @if(running){
+        <img src="../../assets/icons8-stop-60.png" alt="" (click)="stopSimulation()">
+      }@else{
+        <img src="../../assets/icons8-start-60.png" alt="" (click)="startSimulation()">
+      }
       <div class="clock-container">
         <div class="each-clock">
           <p class="time">

@@ -28,6 +28,8 @@ export class SimulationComponent implements OnInit, OnDestroy {
   selectedFile: File | null = null;
   ready: boolean = false;
 
+  running: boolean = false;
+
   actualProcessId: number = 0;
 
   allSimulationLogs: ProcesoTupla[][] = [];  // Guardará todos los logs
@@ -343,8 +345,13 @@ export class SimulationComponent implements OnInit, OnDestroy {
     }
   }
 
+  stopSimulation() {
+    clearInterval(this.timer);
+    this.running = false;
+  }
 
   startSimulation() {
+    this.running = true;
     this.timer = setInterval(() => {
       this.visibleLogs = [];
       this.visibleOptLogs = [];
